@@ -66,7 +66,7 @@ export const TableTennis: React.FC<TableTennisProps> = ({
     }
   }, [isPaused]);
 
-  // Handle resizing
+  // Handle resizing so the table occupies most of the gameplay viewport
   useEffect(() => {
     const updateSize = () => {
       const container = containerRef.current;
@@ -75,8 +75,8 @@ export const TableTennis: React.FC<TableTennisProps> = ({
       if (!container || !canvas || !engine) return;
 
       const rect = container.getBoundingClientRect();
-      const targetWidth = Math.min(rect.width - 24, 1000);
-      const targetHeight = Math.min(rect.height - 24, targetWidth * 0.58);
+      const targetWidth = Math.min(rect.width - 32, 1120);
+      const targetHeight = Math.min(rect.height - 32, targetWidth * 0.56);
 
       engine.setSize(targetWidth, targetHeight);
     };
@@ -91,11 +91,9 @@ export const TableTennis: React.FC<TableTennisProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       keysDownRef.current[e.key.toLowerCase()] = true;
 
-      // Space or F key triggers smash for P1
       if (e.key === ' ' || e.key.toLowerCase() === 'f') {
         engineRef.current?.triggerSmash('p1');
       }
-      // Enter or Num0 triggers smash for P2
       if (e.key === 'Enter' || e.key === '0') {
         engineRef.current?.triggerSmash('p2');
       }
@@ -119,7 +117,7 @@ export const TableTennis: React.FC<TableTennisProps> = ({
     mousePosRef.current = { x: 0, y };
   }, []);
 
-  // Hand gesture trigger for Smash
+  // Fist gesture trigger for Smash
   useEffect(() => {
     if (controlMode === 'camera') {
       if (p1Hand.isFist) {
@@ -131,7 +129,7 @@ export const TableTennis: React.FC<TableTennisProps> = ({
     }
   }, [controlMode, p1Hand.isFist, p2Hand.isFist]);
 
-  // Input loop
+  // Input sync loop
   useEffect(() => {
     let animId: number;
 
@@ -146,7 +144,6 @@ export const TableTennis: React.FC<TableTennisProps> = ({
           p2Y = p2Hand.isDetected ? p2Hand.y : engine.p2Paddle.targetY / engine.height;
           engine.updateTargets(p1Y, p2Y);
         } else if (controlMode === 'vs-ai') {
-          // P1: Mouse or W/S
           if (mousePosRef.current) {
             p1Y = mousePosRef.current.y;
           } else {
@@ -157,7 +154,6 @@ export const TableTennis: React.FC<TableTennisProps> = ({
           engine.updateTargets(p1Y, engine.p2Paddle.targetY / engine.height);
           engine.updateAI(settings.aiDifficulty, 0.016);
         } else {
-          // 2-Player Local
           if (keysDownRef.current['w']) p1ManualYRef.current = Math.max(0.1, p1ManualYRef.current - 0.025);
           if (keysDownRef.current['s']) p1ManualYRef.current = Math.min(0.9, p1ManualYRef.current + 0.025);
           p1Y = mousePosRef.current ? mousePosRef.current.y : p1ManualYRef.current;
@@ -181,9 +177,9 @@ export const TableTennis: React.FC<TableTennisProps> = ({
     <div
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      className="relative w-full h-full flex items-center justify-center p-4 bg-[#0a0d12]"
+      className="relative w-full h-full flex items-center justify-center p-3 bg-[#0B0E0D]"
     >
-      <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-[#1e293b]">
+      <div className="relative rounded-2xl overflow-hidden border border-[#303833]">
         <canvas
           ref={canvasRef}
           width={900}
@@ -191,22 +187,15 @@ export const TableTennis: React.FC<TableTennisProps> = ({
           className="block cursor-crosshair"
         />
 
-        {/* Smash helper banner */}
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-4 px-4 py-1.5 rounded-full bg-[#141a24]/80 border border-[#263346] text-xs text-[#94a3b8] backdrop-blur-md">
-          <span>⚡ <strong>P1 Smash:</strong> {controlMode === 'camera' ? 'Make Fist Gesture' : 'Spacebar'}</span>
-          <span className="text-[#38485e]">|</span>
-          <span>⚡ <strong>P2 Smash:</strong> {controlMode === 'camera' ? 'Make Fist Gesture' : 'Enter Key'}</span>
-        </div>
-
         {/* Dynamic tracking lost warnings if in camera mode */}
         {controlMode === 'camera' && !p1Hand.isDetected && !isPaused && (
-          <div className="absolute top-4 left-6 bg-[#168BFF]/20 border border-[#168BFF] text-[#168BFF] px-3 py-1.5 rounded-lg text-xs font-mono backdrop-blur-md animate-pulse">
-            ⚠️ P1 Black Marker Lost
+          <div className="absolute top-4 left-6 bg-[#121715]/90 border border-[#168BFF]/40 text-[#168BFF] px-2.5 py-1 rounded-md text-[11px] font-sans font-medium backdrop-blur-sm">
+            P1 Blue Hand Waiting
           </div>
         )}
         {controlMode === 'camera' && !p2Hand.isDetected && !isPaused && (
-          <div className="absolute top-4 right-6 bg-[#E65361]/20 border border-[#E65361] text-[#E65361] px-3 py-1.5 rounded-lg text-xs font-mono backdrop-blur-md animate-pulse">
-            ⚠️ P2 (RED) Hand Lost
+          <div className="absolute top-4 right-6 bg-[#121715]/90 border border-[#E65361]/40 text-[#E65361] px-2.5 py-1 rounded-md text-[11px] font-sans font-medium backdrop-blur-sm">
+            P2 Red Hand Waiting
           </div>
         )}
       </div>

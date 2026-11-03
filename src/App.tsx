@@ -39,10 +39,10 @@ const DEFAULT_SETTINGS: GameSettings = {
   sfxVolume: 0.5,
   showHandPreview: true,
   smoothingFactor: 0.25,
-  p1ColorTarget: { r: 18, g: 18, b: 18, hex: '#121212' },
+  p1ColorTarget: { r: 22, g: 139, b: 255, hex: '#168BFF' },
   p2ColorTarget: { r: 230, g: 83, b: 97, hex: '#E65361' },
   colorTolerance: 120,
-  colorTrackingMode: 'color-priority',
+  colorTrackingMode: 'spatial-priority',
 };
 
 export const App: React.FC = () => {
@@ -61,6 +61,7 @@ export const App: React.FC = () => {
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showHandPreview, setShowHandPreview] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Match Statistics
   const matchStartTimeRef = useRef<number>(0);
@@ -93,6 +94,8 @@ export const App: React.FC = () => {
     p2Hand,
     isModelReady,
     previewCanvasRef,
+    trackingFps,
+    handsDetectedCount,
   } = useHandTracking({
     videoElement: videoRef.current,
     isEnabled: controlMode === 'camera' && (screen === 'camera-setup' || screen === 'calibration' || screen === 'gameplay'),
@@ -102,6 +105,22 @@ export const App: React.FC = () => {
     colorTolerance: settings.colorTolerance,
   });
 
+  // Track Fullscreen state
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, []);
 
   // Global Keyboard shortcuts (Space to start, Escape to pause)
   useEffect(() => {
@@ -147,7 +166,7 @@ export const App: React.FC = () => {
         setCountdown(count);
         audioManager.playCountdownTick(false);
       } else if (count === 0) {
-        setCountdown(0); // "GO!"
+        setCountdown(0);
         audioManager.playCountdownTick(true);
       } else {
         clearInterval(timer);
@@ -155,7 +174,7 @@ export const App: React.FC = () => {
         setMatchState('playing');
         matchStartTimeRef.current = Date.now();
       }
-    }, 900);
+    }, 850);
   }, []);
 
   // Launch match into gameplay screen
@@ -189,7 +208,6 @@ export const App: React.FC = () => {
       matchStatsRef.current.p2Score = nextP2;
       matchStatsRef.current.goalsScored += 1;
 
-      // Check win condition
       if (nextP1 >= settings.targetScore || nextP2 >= settings.targetScore) {
         const winner = nextP1 >= settings.targetScore ? 'p1' : 'p2';
         matchStatsRef.current.winner = winner;
@@ -218,7 +236,7 @@ export const App: React.FC = () => {
   }, []);
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-[#0a0d12] text-[#f3f4f6]">
+    <div className="relative w-screen h-screen overflow-hidden bg-[#0B0E0D] text-[#EAE7DE] select-none font-sans">
       {/* Active system video element for camera feed capture */}
       <video
         ref={videoRef}
@@ -235,6 +253,8 @@ export const App: React.FC = () => {
           onRequestCamera={() => startCamera()}
           onStart={() => setScreen('game-selection')}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
         />
       )}
 
@@ -256,7 +276,11 @@ export const App: React.FC = () => {
           onSelectMode={setControlMode}
           onContinue={() => {
             if (controlMode === 'camera') {
-              setScreen('camera-setup');
+              if (cameraStatus === 'active') {
+                setScreen('calibration');
+              } else {
+                setScreen('camera-setup');
+              }
             } else {
               startMatch();
             }
@@ -287,17 +311,6 @@ export const App: React.FC = () => {
           p1Hand={p1Hand}
           p2Hand={p2Hand}
           previewCanvasRef={previewCanvasRef}
-          p1ColorTarget={settings.p1ColorTarget}
-          p2ColorTarget={settings.p2ColorTarget}
-          colorTolerance={settings.colorTolerance}
-          onUpdateColors={(p1, p2, tol) => {
-            setSettings(prev => ({
-              ...prev,
-              p1ColorTarget: p1,
-              p2ColorTarget: p2,
-              colorTolerance: tol,
-            }));
-          }}
           onCalibrationComplete={startMatch}
           onBack={() => setScreen('camera-setup')}
         />
@@ -305,7 +318,7 @@ export const App: React.FC = () => {
 
       {/* Screen 6: Active Gameplay */}
       {screen === 'gameplay' && (
-        <div className="relative w-full h-full flex flex-col">
+        <div className="relative w-full h-full flex flex-col bg-[#0B0E0D]">
           {/* Top HUD */}
           <GameHUD
             gameType={activeGame}
@@ -314,31 +327,30 @@ export const App: React.FC = () => {
             timerSeconds={timerSeconds}
             p1Hand={p1Hand}
             p2Hand={p2Hand}
-            soundEnabled={settings.soundEnabled}
-            showPreview={showHandPreview}
-            onToggleSound={() => {
-              const next = !settings.soundEnabled;
-              audioManager.setSoundEnabled(next);
-              setSettings(prev => ({ ...prev, soundEnabled: next }));
-            }}
-            onTogglePreview={() => setShowHandPreview(!showHandPreview)}
             onPause={() => setMatchState('paused')}
+            onRestart={() => {
+              setScores({ p1: 0, p2: 0 });
+              setTimerSeconds(0);
+              triggerMatchCountdown();
+            }}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            isFullscreen={isFullscreen}
+            onToggleFullscreen={toggleFullscreen}
           />
 
-          {/* Active Canvas Game View */}
-          <div className="relative flex-1 w-full h-full pt-14">
+          {/* Active Canvas Game View: Table occupies most of the gameplay viewport */}
+          <div className="relative flex-1 w-full h-full pt-14 pb-12 flex items-center justify-center">
             {activeGame === 'air-hockey' ? (
-               <AirHockey
-                 p1Hand={p1Hand}
-                 p2Hand={p2Hand}
-                 controlMode={controlMode}
-                 settings={settings}
-                 videoElement={videoRef.current}
-                 isPaused={matchState !== 'playing'}
-                 onScore={handleScore}
-                 onHit={handleHit}
-               />
+              <AirHockey
+                p1Hand={p1Hand}
+                p2Hand={p2Hand}
+                controlMode={controlMode}
+                settings={settings}
+                videoElement={videoRef.current}
+                isPaused={matchState !== 'playing'}
+                onScore={handleScore}
+                onHit={handleHit}
+              />
             ) : (
               <TableTennis
                 p1Hand={p1Hand}
@@ -355,20 +367,23 @@ export const App: React.FC = () => {
 
           {/* Countdown Overlay */}
           {countdown !== null && (
-            <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm pointer-events-none animate-in fade-in duration-150">
-              <span className="font-mono text-8xl md:text-9xl font-black text-white tracking-widest animate-ping">
+            <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-sm pointer-events-none">
+              <span className="font-mono text-7xl md:text-9xl font-extrabold text-[#EAE7DE] tracking-widest animate-pulse">
                 {countdown === 0 ? 'GO!' : countdown}
               </span>
             </div>
           )}
 
-          {/* Floating PIP Hand Tracking Preview */}
+          {/* Floating PIP Hand Tracking Preview (Top-Right) */}
           {controlMode === 'camera' && showHandPreview && (
             <HandTrackingPreview
               canvasRef={previewCanvasRef}
               p1Hand={p1Hand}
               p2Hand={p2Hand}
               isModelReady={isModelReady}
+              cameraStatus={cameraStatus}
+              trackingFps={trackingFps}
+              handsDetectedCount={handsDetectedCount}
               onClose={() => setShowHandPreview(false)}
             />
           )}

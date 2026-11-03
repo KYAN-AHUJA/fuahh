@@ -7,28 +7,27 @@ export default {
   theme: {
     extend: {
       colors: {
-        charcoal: {
-          950: '#0a0d12',
-          900: '#0f141c',
-          850: '#141a24',
-          800: '#1a2230',
-          700: '#263346',
-          600: '#38485e',
+        arena: {
+          bg: '#0B0E0D',
+          surface: '#121715',
+          panel: '#171D1A',
+          text: '#EAE7DE',
+          muted: '#A6AAA2',
+          border: '#303833',
+          p1: '#168BFF',
+          p2: '#E65361',
+          success: '#65B987',
+          warm: '#D9CCB2',
+          'warm-text': '#171916',
         },
         player1: {
           DEFAULT: '#168BFF',
-          glow: 'rgba(22, 139, 255, 0.4)',
           dark: '#0d5bb0',
         },
         player2: {
           DEFAULT: '#E65361',
-          glow: 'rgba(230, 83, 97, 0.4)',
           dark: '#b0333f',
         },
-        accent: {
-          gold: '#f59e0b',
-          cyan: '#06b6d4',
-        }
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

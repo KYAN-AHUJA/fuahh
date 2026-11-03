@@ -67,7 +67,7 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
     }
   }, [isPaused]);
 
-  // Handle resizing
+  // Handle resizing so the table occupies most of the gameplay viewport
   useEffect(() => {
     const updateSize = () => {
       const container = containerRef.current;
@@ -76,8 +76,8 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
       if (!container || !canvas || !engine) return;
 
       const rect = container.getBoundingClientRect();
-      const targetWidth = Math.min(rect.width - 24, 1000);
-      const targetHeight = Math.min(rect.height - 24, targetWidth * 0.6);
+      const targetWidth = Math.min(rect.width - 32, 1120);
+      const targetHeight = Math.min(rect.height - 32, targetWidth * 0.58);
 
       engine.setSize(targetWidth, targetHeight);
     };
@@ -112,7 +112,7 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
     mousePosRef.current = { x, y };
   }, []);
 
-  // Input update tick
+  // Synchronize inputs smoothly
   useEffect(() => {
     let animId: number;
 
@@ -123,11 +123,9 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
         let p2Target = { x: 0.82, y: 0.5 };
 
         if (controlMode === 'camera') {
-          // Use camera hand tracking
           if (p1Hand.isDetected) {
             p1Target = { x: p1Hand.x, y: p1Hand.y };
           } else {
-            // Keep previous
             p1Target = { x: engine.p1Paddle.targetX / engine.width, y: engine.p1Paddle.targetY / engine.height };
           }
 
@@ -137,7 +135,6 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
             p2Target = { x: engine.p2Paddle.targetX / engine.width, y: engine.p2Paddle.targetY / engine.height };
           }
         } else if (controlMode === 'vs-ai') {
-          // P1 controlled by Mouse or Keyboard W/S/A/D
           if (mousePosRef.current) {
             p1Target = mousePosRef.current;
           } else {
@@ -148,18 +145,15 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
             if (keysDownRef.current['d']) p1ManualPosRef.current.x = Math.min(0.45, p1ManualPosRef.current.x + step);
             p1Target = p1ManualPosRef.current;
           }
-          // P2 is AI Bot!
           engine.updateAI(settings.aiDifficulty, 0.016);
         } else {
           // Local 2-Player Keyboard / Mouse
-          // P1: Mouse or W/S/A/D
           if (keysDownRef.current['w']) p1ManualPosRef.current.y = Math.max(0.08, p1ManualPosRef.current.y - 0.02);
           if (keysDownRef.current['s']) p1ManualPosRef.current.y = Math.min(0.92, p1ManualPosRef.current.y + 0.02);
           if (keysDownRef.current['a']) p1ManualPosRef.current.x = Math.max(0.05, p1ManualPosRef.current.x - 0.02);
           if (keysDownRef.current['d']) p1ManualPosRef.current.x = Math.min(0.45, p1ManualPosRef.current.x + 0.02);
           p1Target = mousePosRef.current && mousePosRef.current.x < 0.5 ? mousePosRef.current : p1ManualPosRef.current;
 
-          // P2: Arrow keys
           if (keysDownRef.current['arrowup']) p2ManualPosRef.current.y = Math.max(0.08, p2ManualPosRef.current.y - 0.02);
           if (keysDownRef.current['arrowdown']) p2ManualPosRef.current.y = Math.min(0.92, p2ManualPosRef.current.y + 0.02);
           if (keysDownRef.current['arrowleft']) p2ManualPosRef.current.x = Math.max(0.55, p2ManualPosRef.current.x - 0.02);
@@ -170,7 +164,6 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
         if (controlMode !== 'vs-ai') {
           engine.updateTargets(p1Target, p2Target);
         } else {
-          // In vs-ai, P1 target is updated, P2 target is computed inside updateAI
           engine.updateTargets(p1Target, { x: engine.p2Paddle.targetX / engine.width, y: engine.p2Paddle.targetY / engine.height });
         }
       }
@@ -186,25 +179,25 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
     <div
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      className="relative w-full h-full flex items-center justify-center p-4 bg-[#0a0d12]"
+      className="relative w-full h-full flex items-center justify-center p-3 bg-[#0B0E0D]"
     >
-      <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-[#1e293b]">
+      <div className="relative rounded-2xl overflow-hidden border border-[#303833]">
         <canvas
           ref={canvasRef}
           width={900}
-          height={560}
+          height={540}
           className="block cursor-crosshair"
         />
 
-        {/* Dynamic tracking lost warnings if in camera mode */}
+        {/* Restrained Hand Status Warnings */}
         {controlMode === 'camera' && !p1Hand.isDetected && !isPaused && (
-          <div className="absolute top-4 left-6 bg-[#168BFF]/20 border border-[#168BFF] text-[#168BFF] px-3 py-1.5 rounded-lg text-xs font-mono backdrop-blur-md animate-pulse">
-            ⚠️ P1 Black Marker Lost
+          <div className="absolute top-4 left-6 bg-[#121715]/90 border border-[#168BFF]/40 text-[#168BFF] px-2.5 py-1 rounded-md text-[11px] font-sans font-medium backdrop-blur-sm">
+            P1 Blue Hand Waiting
           </div>
         )}
         {controlMode === 'camera' && !p2Hand.isDetected && !isPaused && (
-          <div className="absolute top-4 right-6 bg-[#E65361]/20 border border-[#E65361] text-[#E65361] px-3 py-1.5 rounded-lg text-xs font-mono backdrop-blur-md animate-pulse">
-            ⚠️ P2 (RED) Hand Lost
+          <div className="absolute top-4 right-6 bg-[#121715]/90 border border-[#E65361]/40 text-[#E65361] px-2.5 py-1 rounded-md text-[11px] font-sans font-medium backdrop-blur-sm">
+            P2 Red Hand Waiting
           </div>
         )}
       </div>

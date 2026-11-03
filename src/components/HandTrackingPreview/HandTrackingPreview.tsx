@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { HandData } from '../../types';
-import { Camera, Minimize2, Maximize2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Camera, Minimize2, Maximize2 } from 'lucide-react';
 
 interface HandTrackingPreviewProps {
   canvasRef: React.RefObject<HTMLCanvasElement>;
   p1Hand: HandData;
   p2Hand: HandData;
   isModelReady: boolean;
+  cameraStatus?: string;
+  trackingFps?: number;
+  handsDetectedCount?: number;
   onClose?: () => void;
 }
 
@@ -15,96 +18,109 @@ export const HandTrackingPreview: React.FC<HandTrackingPreviewProps> = ({
   p1Hand,
   p2Hand,
   isModelReady,
+  cameraStatus = 'active',
+  trackingFps = 60,
+  handsDetectedCount,
   onClose,
 }) => {
   const [isMinimized, setIsMinimized] = useState(false);
 
+  // Compute actual count from detection if not passed
+  const activeHandsCount = handsDetectedCount !== undefined
+    ? handsDetectedCount
+    : (p1Hand.isDetected ? 1 : 0) + (p2Hand.isDetected ? 1 : 0);
+
   return (
-    <div className="fixed bottom-4 right-4 z-30 bg-[#0f141c]/90 border border-[#263346] rounded-xl shadow-2xl backdrop-blur-lg overflow-hidden transition-all duration-200">
+    <div className="fixed top-16 right-4 z-30 w-64 bg-[#121715]/95 border border-[#303833] rounded-lg shadow-xl backdrop-blur-md overflow-hidden select-none transition-all">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-3 py-2 bg-[#141a24] border-b border-[#1e293b]">
+      <div className="flex items-center justify-between px-3 py-2 bg-[#171D1A] border-b border-[#303833]">
         <div className="flex items-center gap-2">
-          <Camera size={14} className="text-[#06b6d4]" />
-          <span className="text-xs font-semibold tracking-wider text-[#cbd5e1] uppercase">
-            Color & Hand Pipeline
+          <Camera size={13} className="text-[#A6AAA2]" />
+          <span className="text-[11px] font-semibold tracking-wider text-[#EAE7DE] uppercase">
+            HAND TRACKING
           </span>
-          <span className={`w-2 h-2 rounded-full ${isModelReady ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          <span className="font-mono text-[10px] text-[#A6AAA2]">
+            {trackingFps} FPS
+          </span>
           <button
             onClick={() => setIsMinimized(!isMinimized)}
-            className="p-1 text-[#94a3b8] hover:text-white rounded hover:bg-[#1e293b]"
+            className="p-0.5 text-[#A6AAA2] hover:text-[#EAE7DE] rounded hover:bg-[#303833] transition"
+            title={isMinimized ? 'Expand preview' : 'Minimize preview'}
           >
-            {isMinimized ? <Maximize2 size={13} /> : <Minimize2 size={13} />}
+            {isMinimized ? <Maximize2 size={12} /> : <Minimize2 size={12} />}
           </button>
         </div>
       </div>
 
       {!isMinimized && (
-        <div className="p-3">
-          {/* Canvas mirror video + landmarks */}
-          <div className="relative w-52 h-36 rounded-lg overflow-hidden bg-black border border-[#1e293b]">
+        <div className="p-2.5 flex flex-col gap-2">
+          {/* Live Webcam Thumbnail with Landmarks */}
+          <div className="relative w-full aspect-video rounded bg-[#0B0E0D] border border-[#303833] overflow-hidden">
             <canvas
               ref={canvasRef}
               width={320}
-              height={240}
+              height={180}
               className="w-full h-full object-cover"
             />
             {!isModelReady && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/75 text-xs text-[#94a3b8]">
-                Loading model...
+              <div className="absolute inset-0 flex items-center justify-center bg-[#0B0E0D]/80 text-[11px] text-[#A6AAA2]">
+                Initializing model...
               </div>
             )}
           </div>
 
-          {/* Player Detection & Sampled Color Indicators */}
-          <div className="grid grid-cols-2 gap-2 mt-2.5">
-            {/* P1 status */}
-            <div className={`p-1.5 rounded-md border text-[11px] ${
-              p1Hand.isDetected
-                ? 'bg-[#168BFF]/10 border-[#168BFF]/40 text-[#168BFF]'
-                : 'bg-[#1e293b]/40 border-[#263346] text-[#64748b]'
-            }`}>
+          {/* Stats Summary Line: Hands detected count & Camera status */}
+          <div className="flex items-center justify-between px-1 text-[10px] font-mono text-[#A6AAA2]">
+            <span className="flex items-center gap-1">
+              <span>HANDS:</span>
+              <strong className="text-[#EAE7DE]">{activeHandsCount}/2</strong>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${cameraStatus === 'active' ? 'bg-[#65B987]' : 'bg-[#A6AAA2]'}`} />
+              <span className="uppercase text-[#A6AAA2]">{cameraStatus}</span>
+            </span>
+          </div>
+
+          {/* Player 1 and Player 2 Separate Detection States */}
+          <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+            {/* Player 1 (Blue) */}
+            <div
+              className={`p-1.5 rounded border text-[10px] transition ${
+                p1Hand.isDetected
+                  ? 'bg-[#171D1A] border-[#168BFF]/50 text-[#EAE7DE]'
+                  : 'bg-[#121715] border-[#303833] text-[#A6AAA2]'
+              }`}
+            >
               <div className="flex items-center justify-between font-semibold">
                 <span className="flex items-center gap-1">
-                  {p1Hand.detectedColor && (
-                    <span
-                      className="w-2.5 h-2.5 rounded-full inline-block border border-white"
-                      style={{ backgroundColor: p1Hand.detectedColor.hex }}
-                    />
-                  )}
-                  <span>P1 BLACK</span>
+                  <span className={`w-2 h-2 rounded-full ${p1Hand.isDetected ? 'bg-[#168BFF]' : 'bg-[#303833]'}`} />
+                  <span className="text-[#168BFF]">P1 BLUE</span>
                 </span>
-                {p1Hand.isDetected ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
-              </div>
-              <div className="text-[10px] mt-0.5 opacity-80 flex items-center justify-between font-mono">
-                <span>{p1Hand.isDetected ? `${Math.round(p1Hand.confidence * 100)}%` : 'Searching'}</span>
-                {p1Hand.detectedColor && <span>{p1Hand.detectedColor.hex}</span>}
+                <span className="font-mono text-[9px]">
+                  {p1Hand.isDetected ? `${Math.round(p1Hand.confidence * 100)}%` : 'OFF'}
+                </span>
               </div>
             </div>
 
-            {/* P2 status */}
-            <div className={`p-1.5 rounded-md border text-[11px] ${
-              p2Hand.isDetected
-                ? 'bg-[#E65361]/10 border-[#E65361]/40 text-[#E65361]'
-                : 'bg-[#1e293b]/40 border-[#263346] text-[#64748b]'
-            }`}>
+            {/* Player 2 (Red) */}
+            <div
+              className={`p-1.5 rounded border text-[10px] transition ${
+                p2Hand.isDetected
+                  ? 'bg-[#171D1A] border-[#E65361]/50 text-[#EAE7DE]'
+                  : 'bg-[#121715] border-[#303833] text-[#A6AAA2]'
+              }`}
+            >
               <div className="flex items-center justify-between font-semibold">
                 <span className="flex items-center gap-1">
-                  {p2Hand.detectedColor && (
-                    <span
-                      className="w-2.5 h-2.5 rounded-full inline-block border border-white"
-                      style={{ backgroundColor: p2Hand.detectedColor.hex }}
-                    />
-                  )}
-                  <span>P2 RED</span>
+                  <span className={`w-2 h-2 rounded-full ${p2Hand.isDetected ? 'bg-[#E65361]' : 'bg-[#303833]'}`} />
+                  <span className="text-[#E65361]">P2 RED</span>
                 </span>
-                {p2Hand.isDetected ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
-              </div>
-              <div className="text-[10px] mt-0.5 opacity-80 flex items-center justify-between font-mono">
-                <span>{p2Hand.isDetected ? `${Math.round(p2Hand.confidence * 100)}%` : 'Searching'}</span>
-                {p2Hand.detectedColor && <span>{p2Hand.detectedColor.hex}</span>}
+                <span className="font-mono text-[9px]">
+                  {p2Hand.isDetected ? `${Math.round(p2Hand.confidence * 100)}%` : 'OFF'}
+                </span>
               </div>
             </div>
           </div>

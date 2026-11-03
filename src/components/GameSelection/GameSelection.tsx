@@ -1,6 +1,6 @@
 import React from 'react';
 import { GameType } from '../../types';
-import { Disc, Activity, ArrowLeft, ChevronRight, Zap, Target } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { audioManager } from '../../audio/AudioManager';
 
 interface GameSelectionProps {
@@ -10,7 +10,7 @@ interface GameSelectionProps {
 
 export const GameSelection: React.FC<GameSelectionProps> = ({ onSelectGame, onBack }) => {
   return (
-    <div className="relative w-full h-full min-h-screen flex flex-col justify-between p-8 bg-[#0a0d12] text-[#f3f4f6]">
+    <div className="relative w-full h-full min-h-screen flex flex-col justify-between p-8 bg-[#0B0E0D] text-[#EAE7DE] overflow-y-auto">
       {/* Header */}
       <header className="max-w-5xl w-full mx-auto flex items-center justify-between">
         <button
@@ -18,131 +18,127 @@ export const GameSelection: React.FC<GameSelectionProps> = ({ onSelectGame, onBa
             audioManager.playButtonClick();
             onBack();
           }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#141a24] hover:bg-[#1a2230] border border-[#263346] text-xs font-semibold text-[#cbd5e1] tracking-wider transition"
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-[#121715] hover:bg-[#171D1A] border border-[#303833] text-xs font-medium text-[#A6AAA2] hover:text-[#EAE7DE] tracking-wider transition"
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft size={14} />
           <span>BACK</span>
         </button>
 
-        <span className="font-mono text-xs uppercase tracking-widest text-[#94a3b8]">
-          STEP 1 / 3 : SELECT DISCIPLINE
+        <span className="font-mono text-xs uppercase tracking-widest text-[#A6AAA2]">
+          SELECT DISCIPLINE
         </span>
       </header>
 
       {/* Main Selection Area */}
-      <main className="max-w-4xl w-full mx-auto my-auto py-8">
+      <main className="max-w-4xl w-full mx-auto my-auto py-10">
         <div className="text-center mb-10">
-          <h2 className="text-3xl md:text-4xl font-black tracking-tight text-white uppercase mb-2">
-            CHOOSE YOUR SPORT
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-[#EAE7DE] uppercase mb-2">
+            SELECT GAME MODE
           </h2>
-          <p className="text-xs md:text-sm text-[#94a3b8]">
-            Both games support simultaneous 2-player hand tracking, local controls, and AI mode.
+          <p className="text-xs md:text-sm text-[#A6AAA2]">
+            Choose your arena
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Card 1: Air Hockey */}
-          <div
-            onClick={() => {
-              audioManager.playButtonClick();
-              onSelectGame('air-hockey');
-            }}
-            className="group relative cursor-pointer p-8 rounded-3xl bg-[#0f141c] hover:bg-[#141a24] border border-[#263346] hover:border-[#168BFF] transition-all duration-200 shadow-xl hover:shadow-2xl hover:shadow-[#168BFF]/10 flex flex-col justify-between"
-          >
+          <div className="flex flex-col justify-between p-7 rounded-xl bg-[#121715] border border-[#303833] hover:border-[#168BFF]/70 transition duration-200">
             <div>
-              <div className="flex items-center justify-between mb-6">
-                <div className="p-3.5 rounded-2xl bg-[#168BFF]/10 border border-[#168BFF]/30 text-[#168BFF] group-hover:scale-110 transition duration-200">
-                  <Disc size={28} />
-                </div>
-                <span className="text-xs font-mono px-3 py-1 rounded-full bg-[#1e293b] text-[#94a3b8]">
-                  TOP-DOWN 2D
-                </span>
+              {/* Flat 2D Top-Down Arena Illustration */}
+              <div className="w-full aspect-[16/10] rounded-lg bg-[#0B0E0D] border border-[#303833] mb-6 p-4 flex items-center justify-center">
+                <svg viewBox="0 0 240 140" className="w-full h-full select-none" fill="none">
+                  {/* Rounded table body */}
+                  <rect x="10" y="10" width="220" height="120" rx="14" fill="#171D1A" stroke="#303833" strokeWidth="1.5" />
+                  {/* Center line */}
+                  <line x1="120" y1="12" x2="120" y2="128" stroke="#303833" strokeWidth="1" strokeDasharray="4 4" />
+                  {/* Center circle */}
+                  <circle cx="120" cy="70" r="24" stroke="#303833" strokeWidth="1" />
+                  {/* Left goal */}
+                  <rect x="8" y="50" width="4" height="40" fill="#168BFF" />
+                  <circle cx="50" cy="70" r="14" fill="#168BFF" />
+                  <circle cx="50" cy="70" r="6" fill="#121715" />
+                  {/* Right goal */}
+                  <rect x="228" y="50" width="4" height="40" fill="#E65361" />
+                  <circle cx="190" cy="70" r="14" fill="#E65361" />
+                  <circle cx="190" cy="70" r="6" fill="#121715" />
+                  {/* Puck */}
+                  <circle cx="120" cy="70" r="5" fill="#EAE7DE" stroke="#A6AAA2" strokeWidth="1" />
+                </svg>
               </div>
 
-              <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-[#168BFF] transition">
-                AIR HOCKEY
-              </h3>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2 h-2 rounded-full bg-[#168BFF]" />
+                <h3 className="text-lg font-bold text-[#EAE7DE] uppercase tracking-wide">
+                  AIR HOCKEY
+                </h3>
+              </div>
 
-              <p className="text-xs text-[#94a3b8] leading-relaxed mb-6">
-                Classic arcade table hockey. Gliding puck with realistic air-table physics, goal slots,
-                defensive zones, and paddle swings that transfer raw speed directly on impact.
+              <p className="text-xs text-[#A6AAA2] leading-relaxed mb-6">
+                Direct top-down air table hockey. Low-friction sliding puck, perimeter bank shots,
+                and circular goal openings.
               </p>
-
-              <div className="flex flex-col gap-2 text-xs text-[#cbd5e1]">
-                <div className="flex items-center gap-2">
-                  <Target size={14} className="text-[#168BFF]" />
-                  <span>Dual goal nets & goal explosion sparks</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Zap size={14} className="text-[#168BFF]" />
-                  <span>First to 5 goals wins the match</span>
-                </div>
-              </div>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-[#1e293b] flex items-center justify-between">
-              <span className="text-xs font-bold text-[#168BFF] tracking-wider uppercase">
-                Launch Air Hockey
-              </span>
-              <div className="p-2 rounded-xl bg-[#168BFF]/10 group-hover:bg-[#168BFF] text-[#168BFF] group-hover:text-white transition">
-                <ChevronRight size={18} />
-              </div>
-            </div>
+            <button
+              onClick={() => {
+                audioManager.playButtonClick();
+                onSelectGame('air-hockey');
+              }}
+              className="w-full py-3 rounded-md bg-[#D9CCB2] hover:bg-[#eae0cb] text-[#171916] text-xs font-bold tracking-wider uppercase transition"
+            >
+              PLAY AIR HOCKEY
+            </button>
           </div>
 
-          {/* Card 2: Table Tennis */}
-          <div
-            onClick={() => {
-              audioManager.playButtonClick();
-              onSelectGame('table-tennis');
-            }}
-            className="group relative cursor-pointer p-8 rounded-3xl bg-[#0f141c] hover:bg-[#141a24] border border-[#263346] hover:border-[#06b6d4] transition-all duration-200 shadow-xl hover:shadow-2xl hover:shadow-[#06b6d4]/10 flex flex-col justify-between"
-          >
+          {/* Card 2: Arcade Table Tennis */}
+          <div className="flex flex-col justify-between p-7 rounded-xl bg-[#121715] border border-[#303833] hover:border-[#E65361]/70 transition duration-200">
             <div>
-              <div className="flex items-center justify-between mb-6">
-                <div className="p-3.5 rounded-2xl bg-[#06b6d4]/10 border border-[#06b6d4]/30 text-[#06b6d4] group-hover:scale-110 transition duration-200">
-                  <Activity size={28} />
-                </div>
-                <span className="text-xs font-mono px-3 py-1 rounded-full bg-[#1e293b] text-[#94a3b8]">
-                  ARCADE SPEED
-                </span>
+              {/* Flat 2D Top-Down Arena Illustration */}
+              <div className="w-full aspect-[16/10] rounded-lg bg-[#0B0E0D] border border-[#303833] mb-6 p-4 flex items-center justify-center">
+                <svg viewBox="0 0 240 140" className="w-full h-full select-none" fill="none">
+                  {/* Rectangular table body */}
+                  <rect x="10" y="10" width="220" height="120" fill="#171D1A" stroke="#303833" strokeWidth="1.5" />
+                  {/* Center net divider */}
+                  <line x1="120" y1="8" x2="120" y2="132" stroke="#303833" strokeWidth="1.5" strokeDasharray="3 3" />
+                  <rect x="118" y="6" width="4" height="4" fill="#D9CCB2" />
+                  <rect x="118" y="130" width="4" height="4" fill="#D9CCB2" />
+                  {/* Left paddle: Blue */}
+                  <rect x="24" y="52" width="6" height="36" rx="2" fill="#168BFF" />
+                  {/* Right paddle: Red */}
+                  <rect x="210" y="52" width="6" height="36" rx="2" fill="#E65361" />
+                  {/* Ball */}
+                  <circle cx="100" cy="65" r="4" fill="#EAE7DE" stroke="#A6AAA2" strokeWidth="0.5" />
+                </svg>
               </div>
 
-              <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-[#06b6d4] transition">
-                ARCADE TABLE TENNIS
-              </h3>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2 h-2 rounded-full bg-[#E65361]" />
+                <h3 className="text-lg font-bold text-[#EAE7DE] uppercase tracking-wide">
+                  ARCADE TABLE TENNIS
+                </h3>
+              </div>
 
-              <p className="text-xs text-[#94a3b8] leading-relaxed mb-6">
-                High-octane rally ping pong. Dynamic ball spin, accelerating ball velocity on consecutive returns,
-                rally combo multipliers, and fist-activated SMASH power shots.
+              <p className="text-xs text-[#A6AAA2] leading-relaxed mb-6">
+                Fast-paced rally ping pong. Dynamic spin trajectory, accelerating return speeds,
+                and fist gesture activated smash returns.
               </p>
-
-              <div className="flex flex-col gap-2 text-xs text-[#cbd5e1]">
-                <div className="flex items-center gap-2">
-                  <Target size={14} className="text-[#06b6d4]" />
-                  <span>Ball spin curves & speed escalation</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Zap size={14} className="text-[#06b6d4]" />
-                  <span>Fist Gesture / Spacebar SMASH ability</span>
-                </div>
-              </div>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-[#1e293b] flex items-center justify-between">
-              <span className="text-xs font-bold text-[#06b6d4] tracking-wider uppercase">
-                Launch Table Tennis
-              </span>
-              <div className="p-2 rounded-xl bg-[#06b6d4]/10 group-hover:bg-[#06b6d4] text-[#06b6d4] group-hover:text-white transition">
-                <ChevronRight size={18} />
-              </div>
-            </div>
+            <button
+              onClick={() => {
+                audioManager.playButtonClick();
+                onSelectGame('table-tennis');
+              }}
+              className="w-full py-3 rounded-md bg-[#D9CCB2] hover:bg-[#eae0cb] text-[#171916] text-xs font-bold tracking-wider uppercase transition"
+            >
+              PLAY TABLE TENNIS
+            </button>
           </div>
         </div>
       </main>
 
-      <footer className="max-w-5xl w-full mx-auto text-center text-xs text-[#64748b]">
-        You can switch game disciplines at any time from the pause menu.
+      <footer className="max-w-5xl w-full mx-auto text-center text-xs text-[#A6AAA2]">
+        Both game modes support camera gesture tracking, local keyboard, or AI play.
       </footer>
     </div>
   );

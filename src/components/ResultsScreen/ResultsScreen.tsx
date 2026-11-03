@@ -18,7 +18,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
 }) => {
   const isP1Winner = stats.winner === 'p1';
   const winnerColor = isP1Winner ? '#168BFF' : '#E65361';
-  const winnerTitle = isP1Winner ? 'PLAYER 1 WINS!' : 'PLAYER 2 WINS!';
+  const winnerTitle = isP1Winner ? 'PLAYER 1 WINS' : 'PLAYER 2 WINS';
 
   useEffect(() => {
     audioManager.playVictory();
@@ -31,89 +31,82 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
-      <div className="w-full max-w-md rounded-2xl bg-[#0f141c] border border-[#263346] shadow-2xl p-8 text-center relative overflow-hidden">
-        {/* Top ambient aura */}
-        <div
-          className="absolute -top-24 left-1/2 -translate-x-1/2 w-64 h-48 rounded-full blur-3xl opacity-30 pointer-events-none"
-          style={{ backgroundColor: winnerColor }}
-        />
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="w-full max-w-md rounded-xl bg-[#121715] border border-[#303833] shadow-2xl p-7 text-center">
         {/* Trophy icon */}
-        <div className="inline-flex p-4 rounded-2xl mb-4 bg-[#1a2230] border border-[#263346] shadow-inner relative">
-          <Trophy size={42} style={{ color: winnerColor }} />
+        <div className="inline-flex p-3 rounded-lg mb-3 bg-[#171D1A] border border-[#303833]">
+          <Trophy size={32} style={{ color: winnerColor }} />
         </div>
 
-        <h1 className="text-2xl font-black tracking-wider text-white uppercase mb-1">
+        <h1 className="text-2xl font-extrabold tracking-tight text-[#EAE7DE] uppercase mb-1">
           {winnerTitle}
         </h1>
-        <p className="text-xs uppercase tracking-widest text-[#94a3b8] font-mono mb-6">
-          {stats.gameType === 'air-hockey' ? 'Air Hockey Championship' : 'Arcade Table Tennis Match'}
+        <p className="text-[11px] uppercase tracking-widest text-[#A6AAA2] font-mono mb-6">
+          {stats.gameType === 'air-hockey' ? 'Air Hockey Match' : 'Table Tennis Match'}
         </p>
 
-        {/* Final Scoreboard Card */}
-        <div className="flex items-center justify-center gap-6 py-4 px-6 rounded-xl bg-[#141a24] border border-[#1e293b] mb-6">
+        {/* Final Scoreboard */}
+        <div className="flex items-center justify-center gap-6 py-4 px-6 rounded-lg bg-[#171D1A] border border-[#303833] mb-6">
           <div className="flex flex-col items-center">
-            <span className="text-xs font-bold text-[#168BFF] tracking-wider mb-1">PLAYER 1</span>
-            <span className={`font-mono text-4xl font-black ${isP1Winner ? 'text-white' : 'text-[#64748b]'}`}>
+            <span className="text-[11px] font-bold text-[#168BFF] tracking-wider mb-1">PLAYER 1</span>
+            <span className={`font-mono text-4xl font-bold ${isP1Winner ? 'text-[#EAE7DE]' : 'text-[#A6AAA2]'}`}>
               {stats.p1Score}
             </span>
           </div>
 
-          <span className="text-2xl font-black text-[#38485e]">:</span>
+          <span className="text-xl font-bold text-[#303833]">:</span>
 
           <div className="flex flex-col items-center">
-            <span className="text-xs font-bold text-[#E65361] tracking-wider mb-1">PLAYER 2</span>
-            <span className={`font-mono text-4xl font-black ${!isP1Winner ? 'text-white' : 'text-[#64748b]'}`}>
+            <span className="text-[11px] font-bold text-[#E65361] tracking-wider mb-1">PLAYER 2</span>
+            <span className={`font-mono text-4xl font-bold ${!isP1Winner ? 'text-[#EAE7DE]' : 'text-[#A6AAA2]'}`}>
               {stats.p2Score}
             </span>
           </div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-2.5 mb-8">
-          <div className="p-3 rounded-lg bg-[#141a24]/60 border border-[#1e293b] text-center">
-            <div className="flex items-center justify-center gap-1 text-[#94a3b8] text-[11px] mb-1">
-              <Clock size={12} />
-              <span>DURATION</span>
+        <div className="grid grid-cols-3 gap-2 mb-6">
+          <div className="p-2.5 rounded-md bg-[#171D1A] border border-[#303833] text-center">
+            <div className="flex items-center justify-center gap-1 text-[#A6AAA2] text-[10px] uppercase font-mono mb-1">
+              <Clock size={11} />
+              <span>TIME</span>
             </div>
-            <div className="font-mono text-sm font-bold text-white">
+            <div className="font-mono text-xs font-bold text-[#EAE7DE]">
               {formatDuration(stats.duration)}
             </div>
           </div>
 
-          <div className="p-3 rounded-lg bg-[#141a24]/60 border border-[#1e293b] text-center">
-            <div className="flex items-center justify-center gap-1 text-[#94a3b8] text-[11px] mb-1">
-              <Zap size={12} />
-              <span>TOTAL HITS</span>
+          <div className="p-2.5 rounded-md bg-[#171D1A] border border-[#303833] text-center">
+            <div className="flex items-center justify-center gap-1 text-[#A6AAA2] text-[10px] uppercase font-mono mb-1">
+              <Zap size={11} />
+              <span>HITS</span>
             </div>
-            <div className="font-mono text-sm font-bold text-white">
+            <div className="font-mono text-xs font-bold text-[#EAE7DE]">
               {stats.totalHits}
             </div>
           </div>
 
-          <div className="p-3 rounded-lg bg-[#141a24]/60 border border-[#1e293b] text-center">
-            <div className="flex items-center justify-center gap-1 text-[#94a3b8] text-[11px] mb-1">
-              <Flame size={12} className="text-amber-500" />
-              <span>MAX RALLY</span>
+          <div className="p-2.5 rounded-md bg-[#171D1A] border border-[#303833] text-center">
+            <div className="flex items-center justify-center gap-1 text-[#A6AAA2] text-[10px] uppercase font-mono mb-1">
+              <Flame size={11} />
+              <span>RALLY</span>
             </div>
-            <div className="font-mono text-sm font-bold text-amber-400">
+            <div className="font-mono text-xs font-bold text-[#EAE7DE]">
               {stats.maxRally}
             </div>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2">
           <button
             onClick={() => {
               audioManager.playButtonClick();
               onRematch();
             }}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-white font-bold text-sm tracking-wide transition shadow-lg"
-            style={{ backgroundColor: winnerColor }}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-md bg-[#D9CCB2] hover:bg-[#eae0cb] text-[#171916] font-bold text-xs tracking-wider uppercase transition"
           >
-            <RotateCcw size={16} />
+            <RotateCcw size={14} />
             <span>PLAY AGAIN (REMATCH)</span>
           </button>
 
@@ -122,9 +115,9 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
               audioManager.playButtonClick();
               onSwitchGame();
             }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#1a2230] hover:bg-[#263346] border border-[#263346] text-[#e2e8f0] font-semibold text-sm transition"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-md bg-[#171D1A] hover:bg-[#202723] border border-[#303833] text-[#EAE7DE] font-medium text-xs tracking-wider uppercase transition"
           >
-            <ArrowRight size={15} />
+            <ArrowRight size={14} />
             <span>SELECT DIFFERENT GAME</span>
           </button>
 
@@ -133,9 +126,9 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
               audioManager.playButtonClick();
               onQuitToMenu();
             }}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl text-[#94a3b8] hover:text-white font-medium text-xs transition"
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-md text-[#A6AAA2] hover:text-[#EAE7DE] font-medium text-xs tracking-wider uppercase transition"
           >
-            <Home size={14} />
+            <Home size={13} />
             <span>MAIN MENU</span>
           </button>
         </div>

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Play, Disc, Activity, Users, Camera, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import { Maximize, Minimize, ChevronDown, Disc, Activity, Camera, X } from 'lucide-react';
 import { CameraStatus } from '../../hooks/useCamera';
 import { audioManager } from '../../audio/AudioManager';
 
@@ -8,6 +8,8 @@ interface LandingPageProps {
   onRequestCamera: () => void;
   onStart: () => void;
   onOpenSettings: () => void;
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
@@ -15,171 +17,276 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onRequestCamera,
   onStart,
   onOpenSettings,
+  isFullscreen,
+  onToggleFullscreen,
 }) => {
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
+
   return (
-    <div className="relative w-full h-full min-h-screen flex flex-col justify-between p-8 bg-[#0a0d12] text-[#f3f4f6] overflow-y-auto">
-      {/* Background ambient accents */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#168BFF]/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#E65361]/10 rounded-full blur-3xl pointer-events-none" />
-
-      {/* Top Bar */}
-      <header className="flex items-center justify-between max-w-6xl w-full mx-auto z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#168BFF] to-[#06b6d4] flex items-center justify-center font-black text-white text-lg shadow-lg shadow-[#168BFF]/25">
-            ⚡
-          </div>
-          <div>
-            <span className="font-extrabold text-xl tracking-wider text-white">NEON ARENA</span>
-            <span className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-[#1e293b] text-[#94a3b8] font-mono border border-[#263346]">
-              v2.0 MULTIPLAYER
-            </span>
-          </div>
+    <div className="relative w-full h-full min-h-screen flex flex-col justify-between bg-[#0B0E0D] text-[#EAE7DE] overflow-y-auto selection:bg-[#303833]">
+      {/* 1. Minimal Top Navigation */}
+      <header className="sticky top-0 z-30 flex items-center justify-between px-8 py-5 bg-[#0B0E0D]/90 border-b border-[#303833]/60 backdrop-blur-md">
+        {/* Wordmark on left */}
+        <div className="flex items-center gap-2.5">
+          <span className="font-extrabold text-lg tracking-[0.2em] text-[#EAE7DE] uppercase">
+            NEON ARENA
+          </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Top Webcam Quick-Permission Button */}
-          {cameraStatus !== 'active' ? (
-            <button
-              onClick={() => {
-                audioManager.playButtonClick();
-                onRequestCamera();
-              }}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#06b6d4]/10 hover:bg-[#06b6d4]/20 border border-[#06b6d4]/40 text-[#06b6d4] text-xs font-semibold tracking-wide transition animate-pulse"
-            >
-              <Camera size={14} />
-              <span>Allow Webcam</span>
-            </button>
-          ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
-              <CheckCircle2 size={13} />
-              <span>Webcam Ready</span>
-            </div>
-          )}
-
+        {/* Navigation links */}
+        <nav className="hidden sm:flex items-center gap-8 text-xs tracking-wider uppercase text-[#A6AAA2] font-medium">
           <button
-            onClick={() => {
-              audioManager.playButtonClick();
-              onOpenSettings();
-            }}
-            className="px-4 py-2 rounded-xl bg-[#141a24] hover:bg-[#1a2230] border border-[#263346] text-xs font-semibold text-[#cbd5e1] tracking-wider transition"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="hover:text-[#EAE7DE] transition"
           >
-            SETTINGS
+            Home
           </button>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <main className="max-w-4xl w-full mx-auto text-center my-auto py-12 z-10 flex flex-col items-center">
-        {/* Interactive Camera Permission Banner */}
-        <div
-          onClick={() => {
-            if (cameraStatus !== 'active') {
-              audioManager.playButtonClick();
-              onRequestCamera();
-            }
-          }}
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-medium mb-6 transition cursor-pointer ${
-            cameraStatus === 'active'
-              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
-              : cameraStatus === 'denied'
-              ? 'bg-rose-500/10 border-rose-500/40 text-rose-400 hover:bg-rose-500/20'
-              : cameraStatus === 'requesting'
-              ? 'bg-[#06b6d4]/10 border-[#06b6d4]/40 text-[#06b6d4]'
-              : 'bg-[#141a24] border-[#263346] text-[#cbd5e1] hover:border-[#06b6d4]'
-          }`}
-        >
-          {cameraStatus === 'active' && <CheckCircle2 size={14} className="text-emerald-400" />}
-          {cameraStatus === 'denied' && <AlertCircle size={14} className="text-rose-400" />}
-          {cameraStatus === 'requesting' && <RefreshCw size={14} className="text-[#06b6d4] animate-spin" />}
-          {cameraStatus === 'idle' && <Camera size={14} className="text-[#06b6d4]" />}
-
-          <span>
-            {cameraStatus === 'active' && 'Webcam Feed Connected • Dual Hand Tracking Active'}
-            {cameraStatus === 'denied' && 'Camera Permission Blocked • Click Here to Re-Request Webcam Feed'}
-            {cameraStatus === 'requesting' && 'Connecting to Webcam Stream...'}
-            {cameraStatus === 'idle' && 'Click to Connect Webcam Feed for Hand Gesture Controls'}
-          </span>
-        </div>
-
-        <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white uppercase mb-4">
-          GESTURE-DRIVEN <br />
-          <span className="bg-gradient-to-r from-[#168BFF] via-[#06b6d4] to-[#E65361] bg-clip-text text-transparent">
-            ARCADE ARENA
-          </span>
-        </h1>
-
-        <p className="max-w-xl text-sm md:text-base text-[#94a3b8] leading-relaxed mb-8">
-          Step up to the table. Play with high-speed circular paddles and comet balls with your bare hands
-          or responsive keyboard controls in two authentic 2D multiplayer sports.
-        </p>
-
-        {/* Action Button Group */}
-        <div className="flex flex-col sm:flex-row items-center gap-4">
           <button
             onClick={() => {
               audioManager.playButtonClick();
               onStart();
             }}
-            className="group relative inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-[#168BFF] hover:bg-[#0d78e3] text-white font-bold text-base tracking-wider uppercase transition shadow-xl shadow-[#168BFF]/30 hover:scale-[1.02] active:scale-[0.98]"
+            className="hover:text-[#EAE7DE] transition"
           >
-            <Play size={20} fill="white" />
-            <span>ENTER ARENA</span>
-            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-md font-mono">SPACE</span>
+            Play
           </button>
+          <button
+            onClick={() => setShowHowToPlay(true)}
+            className="hover:text-[#EAE7DE] transition"
+          >
+            How to Play
+          </button>
+          <button
+            onClick={() => {
+              audioManager.playButtonClick();
+              onOpenSettings();
+            }}
+            className="hover:text-[#EAE7DE] transition"
+          >
+            Settings
+          </button>
+        </nav>
 
-          {cameraStatus !== 'active' && (
-            <button
-              onClick={() => {
-                audioManager.playButtonClick();
-                onRequestCamera();
-              }}
-              className="inline-flex items-center gap-2 px-6 py-4 rounded-2xl bg-[#141a24] hover:bg-[#1a2230] border border-[#06b6d4]/50 text-[#06b6d4] font-bold text-sm tracking-wider uppercase transition hover:scale-[1.02]"
-            >
-              <Camera size={18} />
-              <span>ENABLE WEBCAM FEED</span>
-            </button>
-          )}
+        {/* Fullscreen control on the right */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              audioManager.playButtonClick();
+              onToggleFullscreen();
+            }}
+            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+            className="p-2 rounded-md bg-[#121715] hover:bg-[#171D1A] border border-[#303833] text-[#A6AAA2] hover:text-[#EAE7DE] transition"
+          >
+            {isFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
+          </button>
+        </div>
+      </header>
+
+      {/* 2. Main Hero Section */}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-8 py-12 md:py-16 flex flex-col justify-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          {/* Left Column: Typography & Action Buttons */}
+          <div className="lg:col-span-7 flex flex-col items-start text-left">
+            <p className="font-mono text-xs tracking-[0.25em] text-[#A6AAA2] uppercase mb-4">
+              THE ARCADE. REIMAGINED.
+            </p>
+
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-[#EAE7DE] uppercase leading-[1.05] mb-5">
+              NEON ARENA
+            </h1>
+
+            <p className="text-base md:text-lg text-[#A6AAA2] font-normal leading-relaxed mb-8 max-w-lg">
+              Two players. One camera. Unlimited competition.
+            </p>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => {
+                  audioManager.playButtonClick();
+                  onStart();
+                }}
+                className="px-6 py-3.5 rounded-md bg-[#D9CCB2] hover:bg-[#eae0cb] text-[#171916] text-xs font-bold tracking-[0.15em] uppercase transition hover:scale-[1.01] active:scale-[0.99] shadow-sm"
+              >
+                PLAY NOW
+              </button>
+
+              <button
+                onClick={() => setShowHowToPlay(true)}
+                className="px-6 py-3.5 rounded-md bg-transparent hover:bg-[#121715] border border-[#303833] text-[#EAE7DE] text-xs font-semibold tracking-[0.15em] uppercase transition"
+              >
+                HOW TO PLAY
+              </button>
+            </div>
+
+            {/* Camera feed indicator pill */}
+            <div className="mt-8 flex items-center gap-2.5 text-xs text-[#A6AAA2]">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  cameraStatus === 'active' ? 'bg-[#65B987]' : 'bg-[#A6AAA2]'
+                }`}
+              />
+              <span>
+                {cameraStatus === 'active'
+                  ? 'Webcam connected · Dual-hand gesture engine ready'
+                  : 'Webcam gesture tracking or local two-player mode'}
+              </span>
+              {cameraStatus !== 'active' && (
+                <button
+                  onClick={() => {
+                    audioManager.playButtonClick();
+                    onRequestCamera();
+                  }}
+                  className="ml-2 text-xs text-[#168BFF] hover:underline uppercase tracking-wider font-semibold"
+                >
+                  Enable Camera
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Restrained Abstract 2D Composition */}
+          <div className="lg:col-span-5 flex items-center justify-center">
+            <div className="relative w-72 h-72 sm:w-80 sm:h-80 md:w-96 md:h-96 rounded-2xl bg-[#121715] border border-[#303833] p-6 flex items-center justify-center overflow-hidden shadow-sm">
+              <svg
+                viewBox="0 0 320 320"
+                className="w-full h-full select-none"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {/* Background grid dots */}
+                <pattern id="dot-grid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                  <circle cx="2" cy="2" r="0.75" fill="#303833" opacity="0.6" />
+                </pattern>
+                <rect width="320" height="320" fill="url(#dot-grid)" />
+
+                {/* Overlapping Circles & Soft Arc */}
+                <circle cx="160" cy="160" r="110" stroke="#303833" strokeWidth="1.5" />
+                <circle cx="160" cy="160" r="70" stroke="#303833" strokeWidth="1" strokeDasharray="4 4" />
+
+                {/* Soft arc */}
+                <path
+                  d="M 60 160 A 100 100 0 0 1 260 160"
+                  stroke="#303833"
+                  strokeWidth="1.5"
+                />
+
+                {/* Center table line */}
+                <line x1="160" y1="40" x2="160" y2="280" stroke="#303833" strokeWidth="1.5" />
+
+                {/* Player 1 Blue Disc element */}
+                <circle cx="110" cy="160" r="28" fill="#168BFF" />
+                <circle cx="110" cy="160" r="12" fill="#121715" />
+                <circle cx="110" cy="160" r="4" fill="#168BFF" />
+
+                {/* Player 2 Red Disc element */}
+                <circle cx="210" cy="160" r="28" fill="#E65361" />
+                <circle cx="210" cy="160" r="12" fill="#121715" />
+                <circle cx="210" cy="160" r="4" fill="#E65361" />
+
+                {/* Small off-white puck */}
+                <circle cx="160" cy="130" r="8" fill="#EAE7DE" stroke="#A6AAA2" strokeWidth="1" />
+              </svg>
+            </div>
+          </div>
         </div>
 
-        {/* Feature Highlights Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full mt-14 text-left">
-          <div className="p-5 rounded-2xl bg-[#0f141c]/80 border border-[#1e293b] backdrop-blur-sm">
-            <div className="p-2.5 rounded-xl bg-[#168BFF]/10 text-[#168BFF] w-fit mb-3">
-              <Disc size={20} />
-            </div>
-            <h3 className="font-bold text-sm text-white mb-1">Air Hockey</h3>
-            <p className="text-xs text-[#94a3b8] leading-normal">
-              High-velocity puck physics, live webcam table overlay, and circular mallet collisions.
-            </p>
-          </div>
-
-          <div className="p-5 rounded-2xl bg-[#0f141c]/80 border border-[#1e293b] backdrop-blur-sm">
-            <div className="p-2.5 rounded-xl bg-[#06b6d4]/10 text-[#06b6d4] w-fit mb-3">
-              <Activity size={20} />
-            </div>
-            <h3 className="font-bold text-sm text-white mb-1">Arcade Table Tennis</h3>
-            <p className="text-xs text-[#94a3b8] leading-normal">
-              Dynamic ball spin, accelerating rally multipliers, and fist-activated SMASH power shots.
-            </p>
-          </div>
-
-          <div className="p-5 rounded-2xl bg-[#0f141c]/80 border border-[#1e293b] backdrop-blur-sm">
-            <div className="p-2.5 rounded-xl bg-[#E65361]/10 text-[#E65361] w-fit mb-3">
-              <Users size={20} />
-            </div>
-            <h3 className="font-bold text-sm text-white mb-1">Black & Red Marker Tracking</h3>
-            <p className="text-xs text-[#94a3b8] leading-normal">
-              Tracks a black wrist marker for Player 1 and a red wrist marker for Player 2, ignoring natural hand color.
-            </p>
-          </div>
+        {/* Small "SCROLL TO EXPLORE" cue */}
+        <div className="flex flex-col items-center justify-center mt-12 text-[#A6AAA2] select-none">
+          <span className="text-[10px] tracking-[0.2em] uppercase font-mono">
+            SCROLL TO EXPLORE
+          </span>
+          <ChevronDown size={14} className="mt-1 animate-bounce text-[#A6AAA2]" />
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="max-w-6xl w-full mx-auto flex items-center justify-between text-xs text-[#64748b] border-t border-[#1e293b] pt-4 z-10">
-        <span>PLAYER 1: BLACK MARKER • PLAYER 2: RED MARKER</span>
+      {/* 3. Features & Disciplines Section */}
+      <section className="max-w-6xl w-full mx-auto px-8 py-16 border-t border-[#303833]/60">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Discipline 1: Air Hockey */}
+          <div className="p-8 rounded-xl bg-[#121715] border border-[#303833]">
+            <div className="flex items-center justify-between mb-4">
+              <span className="font-mono text-xs tracking-wider text-[#168BFF] uppercase">
+                01 · DISCIPLINE
+              </span>
+              <Disc size={18} className="text-[#168BFF]" />
+            </div>
+            <h3 className="text-xl font-bold text-[#EAE7DE] mb-2 uppercase">
+              2D Air Hockey
+            </h3>
+            <p className="text-xs text-[#A6AAA2] leading-relaxed">
+              Authentic top-down table hockey. Glide physics, perimeter wall bounces, goal crease slots,
+              and tactile hand-controlled mallets.
+            </p>
+          </div>
+
+          {/* Discipline 2: Table Tennis */}
+          <div className="p-8 rounded-xl bg-[#121715] border border-[#303833]">
+            <div className="flex items-center justify-between mb-4">
+              <span className="font-mono text-xs tracking-wider text-[#E65361] uppercase">
+                02 · DISCIPLINE
+              </span>
+              <Activity size={18} className="text-[#E65361]" />
+            </div>
+            <h3 className="text-xl font-bold text-[#EAE7DE] mb-2 uppercase">
+              Arcade Table Tennis
+            </h3>
+            <p className="text-xs text-[#A6AAA2] leading-relaxed">
+              High-speed rally ping pong. Dynamic spin trajectory, accelerating return speeds,
+              and fist gesture activated smash power returns.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. Footer */}
+      <footer className="max-w-6xl w-full mx-auto px-8 py-6 flex items-center justify-between text-xs text-[#A6AAA2] border-t border-[#303833]/40">
+        <span>PLAYER 1 · BLUE (#168BFF) · PLAYER 2 · RED (#E65361)</span>
         <span>60 FPS DELTA-TIME CANVAS ENGINE</span>
       </footer>
+
+      {/* How to Play Modal */}
+      {showHowToPlay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="max-w-lg w-full bg-[#121715] border border-[#303833] rounded-xl p-6 text-[#EAE7DE] shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-[#303833] mb-5">
+              <h3 className="font-bold text-sm tracking-wider uppercase text-[#EAE7DE]">
+                HOW TO PLAY
+              </h3>
+              <button
+                onClick={() => setShowHowToPlay(false)}
+                className="p-1 rounded text-[#A6AAA2] hover:text-[#EAE7DE] hover:bg-[#171D1A]"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs text-[#A6AAA2] leading-relaxed">
+              <div>
+                <strong className="text-[#EAE7DE] block mb-1">1. WEBCAM GESTURE CONTROL</strong>
+                Position both players in front of the camera. Player 1 stands on the left (Blue paddle), Player 2 on the right (Red paddle). Move your open hand to position your paddle.
+              </div>
+
+              <div>
+                <strong className="text-[#EAE7DE] block mb-1">2. SMASH POWER SHOT</strong>
+                In Table Tennis, close your hand into a fist to trigger a high-speed smash shot when the ball approaches!
+              </div>
+
+              <div>
+                <strong className="text-[#EAE7DE] block mb-1">3. KEYBOARD / LOCAL FALLBACK</strong>
+                Player 1 can use W/S or Mouse. Player 2 can use Arrow Keys or play against the AI Bot. Press Escape at any time to pause.
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowHowToPlay(false)}
+              className="mt-6 w-full py-2.5 rounded-md bg-[#D9CCB2] hover:bg-[#eae0cb] text-[#171916] text-xs font-bold tracking-wider uppercase transition"
+            >
+              GOT IT
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

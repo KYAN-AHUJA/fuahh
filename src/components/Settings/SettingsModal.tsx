@@ -15,13 +15,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
 }) => {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
-      <div className="w-full max-w-md rounded-2xl bg-[#0f141c] border border-[#263346] shadow-2xl p-6 text-left animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-center justify-between pb-4 border-b border-[#1e293b] mb-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md rounded-xl bg-[#121715] border border-[#303833] shadow-2xl p-6 text-left animate-in fade-in zoom-in-95 duration-150">
+        <div className="flex items-center justify-between pb-4 border-b border-[#303833] mb-5">
           <div className="flex items-center gap-2">
-            <Sliders size={18} className="text-[#06b6d4]" />
-            <h2 className="text-lg font-bold text-white tracking-wide">
-              MATCH & SYSTEM SETTINGS
+            <Sliders size={16} className="text-[#A6AAA2]" />
+            <h2 className="text-sm font-bold text-[#EAE7DE] uppercase tracking-wider">
+              SETTINGS
             </h2>
           </div>
           <button
@@ -29,17 +29,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               audioManager.playButtonClick();
               onClose();
             }}
-            className="p-1.5 rounded-lg text-[#94a3b8] hover:text-white hover:bg-[#1e293b]"
+            className="p-1 rounded text-[#A6AAA2] hover:text-[#EAE7DE] hover:bg-[#171D1A]"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
         <div className="flex flex-col gap-5">
           {/* Target Score */}
           <div>
-            <label className="flex items-center gap-2 text-xs font-semibold text-[#cbd5e1] uppercase tracking-wider mb-2">
-              <Trophy size={14} className="text-[#f59e0b]" />
+            <label className="flex items-center gap-2 text-xs font-semibold text-[#EAE7DE] uppercase tracking-wider mb-2">
+              <Trophy size={13} className="text-[#D9CCB2]" />
               <span>Target Score (Points to Win)</span>
             </label>
             <div className="grid grid-cols-4 gap-2">
@@ -50,10 +50,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     audioManager.playButtonClick();
                     onUpdateSettings({ targetScore: score });
                   }}
-                  className={`py-2 rounded-lg font-mono text-sm font-bold border transition ${
+                  className={`py-2 rounded-md font-mono text-xs font-bold border transition ${
                     settings.targetScore === score
-                      ? 'bg-[#168BFF] text-white border-[#168BFF]'
-                      : 'bg-[#141a24] text-[#94a3b8] border-[#263346] hover:bg-[#1a2230]'
+                      ? 'bg-[#D9CCB2] text-[#171916] border-[#D9CCB2]'
+                      : 'bg-[#171D1A] text-[#A6AAA2] border-[#303833] hover:text-[#EAE7DE]'
                   }`}
                 >
                   {score}
@@ -64,8 +64,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* AI Difficulty */}
           <div>
-            <label className="flex items-center gap-2 text-xs font-semibold text-[#cbd5e1] uppercase tracking-wider mb-2">
-              <Shield size={14} className="text-[#E65361]" />
+            <label className="flex items-center gap-2 text-xs font-semibold text-[#EAE7DE] uppercase tracking-wider mb-2">
+              <Shield size={13} className="text-[#E65361]" />
               <span>AI Bot Difficulty</span>
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -76,10 +76,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     audioManager.playButtonClick();
                     onUpdateSettings({ aiDifficulty: diff });
                   }}
-                  className={`py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition ${
+                  className={`py-2 rounded-md text-xs font-bold uppercase tracking-wider border transition ${
                     settings.aiDifficulty === diff
                       ? 'bg-[#E65361] text-white border-[#E65361]'
-                      : 'bg-[#141a24] text-[#94a3b8] border-[#263346] hover:bg-[#1a2230]'
+                      : 'bg-[#171D1A] text-[#A6AAA2] border-[#303833] hover:text-[#EAE7DE]'
                   }`}
                 >
                   {diff}
@@ -90,42 +90,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           {/* SFX Volume */}
           <div>
-            <div className="flex items-center justify-between text-xs font-semibold text-[#cbd5e1] uppercase tracking-wider mb-2">
+            <div className="flex items-center justify-between text-xs font-semibold text-[#EAE7DE] uppercase tracking-wider mb-2">
               <span className="flex items-center gap-2">
-                <Volume2 size={14} className="text-[#06b6d4]" />
+                <Volume2 size={13} className="text-[#A6AAA2]" />
                 <span>Audio Volume</span>
               </span>
-              <span className="font-mono text-[#06b6d4]">
+              <span className="font-mono text-[#A6AAA2]">
                 {settings.soundEnabled ? `${Math.round(settings.sfxVolume * 100)}%` : 'MUTED'}
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={settings.soundEnabled ? settings.sfxVolume : 0}
-                onChange={e => {
-                  const val = parseFloat(e.target.value);
-                  audioManager.setVolume(val);
-                  audioManager.setSoundEnabled(val > 0);
-                  onUpdateSettings({ sfxVolume: val, soundEnabled: val > 0 });
-                }}
-                className="w-full h-2 rounded-lg bg-[#1e293b] accent-[#06b6d4] cursor-pointer"
-              />
-            </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={settings.soundEnabled ? settings.sfxVolume : 0}
+              onChange={e => {
+                const val = parseFloat(e.target.value);
+                audioManager.setVolume(val);
+                audioManager.setSoundEnabled(val > 0);
+                onUpdateSettings({ sfxVolume: val, soundEnabled: val > 0 });
+              }}
+              className="w-full h-1.5 rounded-lg bg-[#303833] accent-[#D9CCB2] cursor-pointer"
+            />
           </div>
 
           {/* Hand Tracking Smoothing */}
           <div>
-            <div className="flex items-center justify-between text-xs font-semibold text-[#cbd5e1] uppercase tracking-wider mb-2">
+            <div className="flex items-center justify-between text-xs font-semibold text-[#EAE7DE] uppercase tracking-wider mb-2">
               <span className="flex items-center gap-2">
-                <Activity size={14} className="text-emerald-400" />
-                <span>Hand Smoothing</span>
+                <Activity size={13} className="text-[#65B987]" />
+                <span>Hand Tracking Response</span>
               </span>
-              <span className="font-mono text-emerald-400">
-                {Math.round(settings.smoothingFactor * 100)}%
+              <span className="font-mono text-[#65B987]">
+                {Math.round((1 - settings.smoothingFactor) * 100)}%
               </span>
             </div>
             <input
@@ -138,67 +136,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 const val = parseFloat(e.target.value);
                 onUpdateSettings({ smoothingFactor: val });
               }}
-              className="w-full h-2 rounded-lg bg-[#1e293b] accent-emerald-400 cursor-pointer"
-            />
-          </div>
-
-          {/* Color Detection Targets */}
-          <div className="pt-2 border-t border-[#1e293b]">
-            <span className="text-xs font-semibold text-[#cbd5e1] uppercase tracking-wider mb-2 block">
-              Glove Color Targets
-            </span>
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <label className="flex items-center justify-between p-2 rounded-lg bg-[#141a24] border border-[#1e293b] text-xs">
-                <span className="text-[#cbd5e1] font-semibold">P1 Black Marker</span>
-                <span className="w-7 h-7 rounded border border-[#64748b] bg-[#121212]" aria-label="Black marker target" />
-              </label>
-
-              <label className="flex items-center justify-between p-2 rounded-lg bg-[#141a24] border border-[#1e293b] text-xs">
-                <span className="text-[#E65361] font-semibold">P2 Red</span>
-                <input
-                  type="color"
-                  value={settings.p2ColorTarget?.hex || '#E65361'}
-                  onChange={e => {
-                    const hex = e.target.value;
-                    const c = parseInt(hex.slice(1), 16);
-                    onUpdateSettings({
-                      p2ColorTarget: {
-                        r: (c >> 16) & 255,
-                        g: (c >> 8) & 255,
-                        b: c & 255,
-                        hex,
-                      },
-                    });
-                  }}
-                  className="w-7 h-7 rounded border-0 bg-transparent cursor-pointer"
-                />
-              </label>
-            </div>
-
-            <div className="flex items-center justify-between text-xs mb-1">
-              <span className="text-[#94a3b8]">Color Tolerance</span>
-              <span className="font-mono text-[#06b6d4]">{settings.colorTolerance || 120}</span>
-            </div>
-            <input
-              type="range"
-              min="20"
-              max="200"
-              value={settings.colorTolerance || 120}
-              onChange={e => {
-                onUpdateSettings({ colorTolerance: parseInt(e.target.value) });
-              }}
-              className="w-full h-1.5 rounded-lg bg-[#1e293b] accent-[#06b6d4] cursor-pointer"
+              className="w-full h-1.5 rounded-lg bg-[#303833] accent-[#65B987] cursor-pointer"
             />
           </div>
         </div>
 
-        <div className="mt-8 pt-4 border-t border-[#1e293b] flex justify-end">
+        <div className="mt-8 pt-4 border-t border-[#303833] flex justify-end">
           <button
             onClick={() => {
               audioManager.playButtonClick();
               onClose();
             }}
-            className="px-6 py-2.5 rounded-xl bg-[#168BFF] hover:bg-[#0d78e3] text-white text-xs font-bold tracking-wider uppercase transition"
+            className="px-6 py-2 rounded-md bg-[#D9CCB2] hover:bg-[#eae0cb] text-[#171916] text-xs font-bold tracking-wider uppercase transition"
           >
             Done
           </button>

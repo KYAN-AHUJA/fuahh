@@ -18,24 +18,24 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
   onQuitToMenu,
 }) => {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-[#0f141c] border border-[#263346] shadow-2xl p-6 text-center animate-in fade-in zoom-in-95 duration-150">
-        <h2 className="text-2xl font-black tracking-widest text-white uppercase mb-1">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm rounded-xl bg-[#121715] border border-[#303833] shadow-2xl p-6 text-center animate-in fade-in zoom-in-95 duration-150">
+        <h2 className="text-xl font-bold tracking-widest text-[#EAE7DE] uppercase mb-1">
           MATCH PAUSED
         </h2>
-        <p className="text-xs text-[#94a3b8] mb-6">
-          Press ESC or choose an action below
+        <p className="text-xs text-[#A6AAA2] mb-6">
+          Press ESC to resume or choose an option
         </p>
 
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2">
           <button
             onClick={() => {
               audioManager.playButtonClick();
               onResume();
             }}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#168BFF] hover:bg-[#0d78e3] text-white font-bold text-sm tracking-wide transition shadow-lg shadow-[#168BFF]/20"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-md bg-[#D9CCB2] hover:bg-[#eae0cb] text-[#171916] font-bold text-xs tracking-wider uppercase transition"
           >
-            <Play size={16} fill="white" />
+            <Play size={14} fill="#171916" />
             <span>RESUME MATCH</span>
           </button>
 
@@ -44,10 +44,10 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
               audioManager.playButtonClick();
               onRestart();
             }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#1a2230] hover:bg-[#263346] border border-[#263346] text-[#e2e8f0] font-semibold text-sm transition"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-md bg-[#171D1A] hover:bg-[#202723] border border-[#303833] text-[#EAE7DE] font-medium text-xs tracking-wider uppercase transition"
           >
-            <RotateCcw size={15} />
-            <span>RESTART ROUND</span>
+            <RotateCcw size={14} />
+            <span>RESTART MATCH</span>
           </button>
 
           <button
@@ -55,9 +55,9 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
               audioManager.playButtonClick();
               onSwitchGame();
             }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#1a2230] hover:bg-[#263346] border border-[#263346] text-[#e2e8f0] font-semibold text-sm transition"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-md bg-[#171D1A] hover:bg-[#202723] border border-[#303833] text-[#EAE7DE] font-medium text-xs tracking-wider uppercase transition"
           >
-            <ArrowLeft size={15} />
+            <ArrowLeft size={14} />
             <span>SWITCH GAME</span>
           </button>
 
@@ -66,20 +66,20 @@ export const PauseMenu: React.FC<PauseMenuProps> = ({
               audioManager.playButtonClick();
               onOpenSettings();
             }}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#1a2230] hover:bg-[#263346] border border-[#263346] text-[#e2e8f0] font-semibold text-sm transition"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-md bg-[#171D1A] hover:bg-[#202723] border border-[#303833] text-[#EAE7DE] font-medium text-xs tracking-wider uppercase transition"
           >
-            <Settings size={15} />
-            <span>GAME SETTINGS</span>
+            <Settings size={14} />
+            <span>SETTINGS</span>
           </button>
 
-          <div className="h-[1px] bg-[#1e293b] my-2" />
+          <div className="h-[1px] bg-[#303833] my-2" />
 
           <button
             onClick={() => {
               audioManager.playButtonClick();
               onQuitToMenu();
             }}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-transparent hover:bg-rose-950/30 text-rose-400 font-medium text-xs transition"
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-md bg-transparent hover:bg-[#171D1A] text-[#A6AAA2] hover:text-[#EAE7DE] font-medium text-xs tracking-wider uppercase transition"
           >
             <Home size={14} />
             <span>MAIN MENU</span>
