@@ -36,7 +36,7 @@ interface UseHandTrackingProps {
 export function useHandTracking({
   videoElement,
   isEnabled,
-  smoothingFactor = 0.25,
+  smoothingFactor = 0.15,
   p1ColorTarget = { r: 22, g: 139, b: 255, hex: '#168BFF' },
   p2ColorTarget = { r: 230, g: 83, b: 97, hex: '#E65361' },
   colorTolerance = 120,
@@ -294,7 +294,7 @@ export function useHandTracking({
       assignedColor: string
     ): HandData => {
       // Responsive smoothing filter
-      const lerp = Math.min(1, Math.max(0.15, 1 - smoothingFactor * 1.8));
+      const lerp = Math.min(1, Math.max(0.15, 1 - smoothingFactor));
       const smoothX = previous.x + (candidate.x - previous.x) * lerp;
       const smoothY = previous.y + (candidate.y - previous.y) * lerp;
 

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { TableTennisEngine } from './TableTennisEngine';
 import { HandData, ControlMode, PlayerId, GameSettings } from '../../types';
 
@@ -31,6 +31,13 @@ export const TableTennis: React.FC<TableTennisProps> = ({
   const p1ManualYRef = useRef(0.5);
   const p2ManualYRef = useRef(0.5);
   const mousePosRef = useRef<{ x: number; y: number } | null>(null);
+  const p1HandRef = useRef(p1Hand);
+  const p2HandRef = useRef(p2Hand);
+
+  useLayoutEffect(() => {
+    p1HandRef.current = p1Hand;
+    p2HandRef.current = p2Hand;
+  }, [p1Hand, p2Hand]);
 
   // Initialize engine
   useEffect(() => {
@@ -140,8 +147,10 @@ export const TableTennis: React.FC<TableTennisProps> = ({
         let p2Y = 0.5;
 
         if (controlMode === 'camera') {
-          p1Y = p1Hand.isDetected ? p1Hand.y : engine.p1Paddle.targetY / engine.height;
-          p2Y = p2Hand.isDetected ? p2Hand.y : engine.p2Paddle.targetY / engine.height;
+          const currentP1Hand = p1HandRef.current;
+          const currentP2Hand = p2HandRef.current;
+          p1Y = currentP1Hand.isDetected ? currentP1Hand.y : engine.p1Paddle.targetY / engine.height;
+          p2Y = currentP2Hand.isDetected ? currentP2Hand.y : engine.p2Paddle.targetY / engine.height;
           engine.updateTargets(p1Y, p2Y);
         } else if (controlMode === 'vs-ai') {
           if (mousePosRef.current) {
@@ -171,7 +180,7 @@ export const TableTennis: React.FC<TableTennisProps> = ({
 
     animId = requestAnimationFrame(tickInput);
     return () => cancelAnimationFrame(animId);
-  }, [controlMode, p1Hand, p2Hand, isPaused, settings.aiDifficulty]);
+  }, [controlMode, isPaused, settings.aiDifficulty]);
 
   return (
     <div

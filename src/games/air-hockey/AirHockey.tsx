@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { AirHockeyEngine } from './AirHockeyEngine';
 import { HandData, ControlMode, PlayerId, GameSettings } from '../../types';
 
@@ -32,6 +32,13 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
   const p1ManualPosRef = useRef({ x: 0.18, y: 0.5 });
   const p2ManualPosRef = useRef({ x: 0.82, y: 0.5 });
   const mousePosRef = useRef<{ x: number; y: number } | null>(null);
+  const p1HandRef = useRef(p1Hand);
+  const p2HandRef = useRef(p2Hand);
+
+  useLayoutEffect(() => {
+    p1HandRef.current = p1Hand;
+    p2HandRef.current = p2Hand;
+  }, [p1Hand, p2Hand]);
 
   // Initialize engine
   useEffect(() => {
@@ -123,14 +130,16 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
         let p2Target = { x: 0.82, y: 0.5 };
 
         if (controlMode === 'camera') {
-          if (p1Hand.isDetected) {
-            p1Target = { x: p1Hand.x, y: p1Hand.y };
+          const currentP1Hand = p1HandRef.current;
+          const currentP2Hand = p2HandRef.current;
+          if (currentP1Hand.isDetected) {
+            p1Target = { x: currentP1Hand.x, y: currentP1Hand.y };
           } else {
             p1Target = { x: engine.p1Paddle.targetX / engine.width, y: engine.p1Paddle.targetY / engine.height };
           }
 
-          if (p2Hand.isDetected) {
-            p2Target = { x: p2Hand.x, y: p2Hand.y };
+          if (currentP2Hand.isDetected) {
+            p2Target = { x: currentP2Hand.x, y: currentP2Hand.y };
           } else {
             p2Target = { x: engine.p2Paddle.targetX / engine.width, y: engine.p2Paddle.targetY / engine.height };
           }
@@ -173,7 +182,7 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
 
     animId = requestAnimationFrame(tickInput);
     return () => cancelAnimationFrame(animId);
-  }, [controlMode, p1Hand, p2Hand, isPaused, settings.aiDifficulty]);
+  }, [controlMode, isPaused, settings.aiDifficulty]);
 
   return (
     <div

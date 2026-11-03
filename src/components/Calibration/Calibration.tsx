@@ -50,7 +50,7 @@ export const Calibration: React.FC<CalibrationProps> = ({
       </header>
 
       {/* Main Calibration Area */}
-      <main className="max-w-4xl w-full mx-auto my-auto py-6 text-center">
+      <main className="max-w-7xl w-full mx-auto my-auto py-6 text-center">
         <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-[#EAE7DE] uppercase mb-1.5">
           CALIBRATION
         </h2>
@@ -61,7 +61,7 @@ export const Calibration: React.FC<CalibrationProps> = ({
         {/* 3-Column Center Layout: Left Card, Center Webcam, Right Card */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center mb-6">
           {/* Left Status Card: PLAYER 1 · BLUE */}
-          <div className="md:col-span-3 flex flex-col justify-between p-5 rounded-xl bg-[#121715] border border-[#303833] text-left">
+          <div className="md:col-span-2 flex flex-col justify-between p-5 rounded-xl bg-[#121715] border border-[#303833] text-left">
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#168BFF]" />
@@ -102,7 +102,7 @@ export const Calibration: React.FC<CalibrationProps> = ({
           </div>
 
           {/* Center Area: Webcam Preview */}
-          <div className="md:col-span-6 flex flex-col items-center">
+          <div className="md:col-span-8 flex flex-col items-center">
             <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-[#0B0E0D] border-2 border-[#303833]">
               <canvas
                 ref={previewCanvasRef}
@@ -114,7 +114,7 @@ export const Calibration: React.FC<CalibrationProps> = ({
           </div>
 
           {/* Right Status Card: PLAYER 2 · RED */}
-          <div className="md:col-span-3 flex flex-col justify-between p-5 rounded-xl bg-[#121715] border border-[#303833] text-left">
+          <div className="md:col-span-2 flex flex-col justify-between p-5 rounded-xl bg-[#121715] border border-[#303833] text-left">
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#E65361]" />

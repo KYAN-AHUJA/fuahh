@@ -17,8 +17,9 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
   onQuitToMenu,
 }) => {
   const isP1Winner = stats.winner === 'p1';
-  const winnerColor = isP1Winner ? '#168BFF' : '#E65361';
-  const winnerTitle = isP1Winner ? 'PLAYER 1 WINS' : 'PLAYER 2 WINS';
+  const isP2Winner = stats.winner === 'p2';
+  const winnerColor = isP1Winner ? '#168BFF' : isP2Winner ? '#E65361' : '#D9CCB2';
+  const winnerTitle = isP1Winner ? 'PLAYER 1 WINS' : isP2Winner ? 'PLAYER 2 WINS' : 'MATCH DRAW';
 
   useEffect(() => {
     audioManager.playVictory();
@@ -49,7 +50,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
         <div className="flex items-center justify-center gap-6 py-4 px-6 rounded-lg bg-[#171D1A] border border-[#303833] mb-6">
           <div className="flex flex-col items-center">
             <span className="text-[11px] font-bold text-[#168BFF] tracking-wider mb-1">PLAYER 1</span>
-            <span className={`font-mono text-4xl font-bold ${isP1Winner ? 'text-[#EAE7DE]' : 'text-[#A6AAA2]'}`}>
+            <span className={`font-mono text-4xl font-bold ${isP1Winner || stats.winner === null ? 'text-[#EAE7DE]' : 'text-[#A6AAA2]'}`}>
               {stats.p1Score}
             </span>
           </div>
@@ -58,7 +59,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
 
           <div className="flex flex-col items-center">
             <span className="text-[11px] font-bold text-[#E65361] tracking-wider mb-1">PLAYER 2</span>
-            <span className={`font-mono text-4xl font-bold ${!isP1Winner ? 'text-[#EAE7DE]' : 'text-[#A6AAA2]'}`}>
+            <span className={`font-mono text-4xl font-bold ${isP2Winner || stats.winner === null ? 'text-[#EAE7DE]' : 'text-[#A6AAA2]'}`}>
               {stats.p2Score}
             </span>
           </div>

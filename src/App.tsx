@@ -38,7 +38,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   soundEnabled: true,
   sfxVolume: 0.5,
   showHandPreview: true,
-  smoothingFactor: 0.25,
+  smoothingFactor: 0.15,
   p1ColorTarget: { r: 22, g: 139, b: 255, hex: '#168BFF' },
   p2ColorTarget: { r: 230, g: 83, b: 97, hex: '#E65361' },
   colorTolerance: 120,
@@ -65,6 +65,7 @@ export const App: React.FC = () => {
 
   // Match Statistics
   const matchStartTimeRef = useRef<number>(0);
+  const countdownIntervalRef = useRef<number | null>(null);
   const matchStatsRef = useRef<MatchStats>({
     winner: null,
     duration: 0,
@@ -153,8 +154,31 @@ export const App: React.FC = () => {
     };
   }, [screen, matchState]);
 
+  useEffect(() => {
+    if (screen !== 'gameplay' || matchState !== 'playing' || settings.matchDuration <= 0 || timerSeconds < settings.matchDuration) {
+      return;
+    }
+
+    const winner = scores.p1 === scores.p2 ? null : scores.p1 > scores.p2 ? 'p1' : 'p2';
+    matchStatsRef.current.winner = winner;
+    matchStatsRef.current.duration = settings.matchDuration;
+    matchStatsRef.current.p1Score = scores.p1;
+    matchStatsRef.current.p2Score = scores.p2;
+    setFinalStats({ ...matchStatsRef.current });
+    setMatchState('match-complete');
+  }, [matchState, scores.p1, scores.p2, screen, settings.matchDuration, timerSeconds]);
+
+  useEffect(() => () => {
+    if (countdownIntervalRef.current !== null) {
+      clearInterval(countdownIntervalRef.current);
+    }
+  }, []);
+
   // Start match countdown (3, 2, 1, GO!)
   const triggerMatchCountdown = useCallback(() => {
+    if (countdownIntervalRef.current !== null) {
+      clearInterval(countdownIntervalRef.current);
+    }
     setCountdown(3);
     setMatchState('countdown');
     audioManager.playCountdownTick(false);
@@ -170,15 +194,16 @@ export const App: React.FC = () => {
         audioManager.playCountdownTick(true);
       } else {
         clearInterval(timer);
+        countdownIntervalRef.current = null;
         setCountdown(null);
         setMatchState('playing');
         matchStartTimeRef.current = Date.now();
       }
     }, 850);
+    countdownIntervalRef.current = timer;
   }, []);
 
-  // Launch match into gameplay screen
-  const startMatch = useCallback(() => {
+  const resetMatch = useCallback(() => {
     setScores({ p1: 0, p2: 0 });
     setTimerSeconds(0);
     matchStatsRef.current = {
@@ -194,9 +219,14 @@ export const App: React.FC = () => {
       gameType: activeGame,
     };
     setFinalStats(null);
-    setScreen('gameplay');
     triggerMatchCountdown();
   }, [activeGame, triggerMatchCountdown]);
+
+  // Launch match into gameplay screen
+  const startMatch = useCallback(() => {
+    resetMatch();
+    setScreen('gameplay');
+  }, [resetMatch]);
 
   // Handle Score Event
   const handleScore = useCallback((scorer: PlayerId) => {
@@ -328,11 +358,7 @@ export const App: React.FC = () => {
             p1Hand={p1Hand}
             p2Hand={p2Hand}
             onPause={() => setMatchState('paused')}
-            onRestart={() => {
-              setScores({ p1: 0, p2: 0 });
-              setTimerSeconds(0);
-              triggerMatchCountdown();
-            }}
+            onRestart={resetMatch}
             onOpenSettings={() => setIsSettingsOpen(true)}
             isFullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
@@ -392,11 +418,7 @@ export const App: React.FC = () => {
           {matchState === 'paused' && (
             <PauseMenu
               onResume={() => setMatchState('playing')}
-              onRestart={() => {
-                setScores({ p1: 0, p2: 0 });
-                setTimerSeconds(0);
-                triggerMatchCountdown();
-              }}
+              onRestart={resetMatch}
               onSwitchGame={() => setScreen('game-selection')}
               onOpenSettings={() => setIsSettingsOpen(true)}
               onQuitToMenu={() => {
@@ -410,11 +432,7 @@ export const App: React.FC = () => {
           {matchState === 'match-complete' && finalStats && (
             <ResultsScreen
               stats={finalStats}
-              onRematch={() => {
-                setScores({ p1: 0, p2: 0 });
-                setTimerSeconds(0);
-                triggerMatchCountdown();
-              }}
+              onRematch={resetMatch}
               onSwitchGame={() => setScreen('game-selection')}
               onQuitToMenu={() => {
                 stopCamera();
