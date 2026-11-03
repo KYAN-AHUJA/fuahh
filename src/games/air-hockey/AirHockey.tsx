@@ -1,0 +1,213 @@
+import React, { useRef, useEffect, useCallback } from 'react';
+import { AirHockeyEngine } from './AirHockeyEngine';
+import { HandData, ControlMode, PlayerId, GameSettings } from '../../types';
+
+interface AirHockeyProps {
+  p1Hand: HandData;
+  p2Hand: HandData;
+  controlMode: ControlMode;
+  settings: GameSettings;
+  videoElement: HTMLVideoElement | null;
+  isPaused: boolean;
+  onScore: (scorer: PlayerId) => void;
+  onHit: (player: PlayerId) => void;
+}
+
+export const AirHockey: React.FC<AirHockeyProps> = ({
+  p1Hand,
+  p2Hand,
+  controlMode,
+  settings,
+  videoElement,
+  isPaused,
+  onScore,
+  onHit,
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const engineRef = useRef<AirHockeyEngine | null>(null);
+
+  // Keyboard state for manual play
+  const keysDownRef = useRef<{ [key: string]: boolean }>({});
+  const p1ManualPosRef = useRef({ x: 0.18, y: 0.5 });
+  const p2ManualPosRef = useRef({ x: 0.82, y: 0.5 });
+  const mousePosRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Initialize engine
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const engine = new AirHockeyEngine(canvas);
+    engine.onScore = onScore;
+    engine.onHit = onHit;
+    engine.videoElement = videoElement;
+    engineRef.current = engine;
+
+    if (!isPaused) {
+      engine.start();
+      engine.resetPuck('p1');
+    }
+
+    return () => {
+      engine.stop();
+      engineRef.current = null;
+    };
+  }, []);
+
+  // Handle pause/resume
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    if (isPaused) {
+      engine.stop();
+    } else {
+      engine.start();
+    }
+  }, [isPaused]);
+
+  // Handle resizing
+  useEffect(() => {
+    const updateSize = () => {
+      const container = containerRef.current;
+      const canvas = canvasRef.current;
+      const engine = engineRef.current;
+      if (!container || !canvas || !engine) return;
+
+      const rect = container.getBoundingClientRect();
+      const targetWidth = Math.min(rect.width - 24, 1000);
+      const targetHeight = Math.min(rect.height - 24, targetWidth * 0.6);
+
+      engine.setSize(targetWidth, targetHeight);
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
+  // Keyboard listeners for keyboard-mouse mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      keysDownRef.current[e.key.toLowerCase()] = true;
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      keysDownRef.current[e.key.toLowerCase()] = false;
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
+  // Mouse move listener
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    mousePosRef.current = { x, y };
+  }, []);
+
+  // Input update tick
+  useEffect(() => {
+    let animId: number;
+
+    const tickInput = () => {
+      const engine = engineRef.current;
+      if (engine && !isPaused) {
+        let p1Target = { x: 0.18, y: 0.5 };
+        let p2Target = { x: 0.82, y: 0.5 };
+
+        if (controlMode === 'camera') {
+          // Use camera hand tracking
+          if (p1Hand.isDetected) {
+            p1Target = { x: p1Hand.x, y: p1Hand.y };
+          } else {
+            // Keep previous
+            p1Target = { x: engine.p1Paddle.targetX / engine.width, y: engine.p1Paddle.targetY / engine.height };
+          }
+
+          if (p2Hand.isDetected) {
+            p2Target = { x: p2Hand.x, y: p2Hand.y };
+          } else {
+            p2Target = { x: engine.p2Paddle.targetX / engine.width, y: engine.p2Paddle.targetY / engine.height };
+          }
+        } else if (controlMode === 'vs-ai') {
+          // P1 controlled by Mouse or Keyboard W/S/A/D
+          if (mousePosRef.current) {
+            p1Target = mousePosRef.current;
+          } else {
+            const step = 0.02;
+            if (keysDownRef.current['w']) p1ManualPosRef.current.y = Math.max(0.08, p1ManualPosRef.current.y - step);
+            if (keysDownRef.current['s']) p1ManualPosRef.current.y = Math.min(0.92, p1ManualPosRef.current.y + step);
+            if (keysDownRef.current['a']) p1ManualPosRef.current.x = Math.max(0.05, p1ManualPosRef.current.x - step);
+            if (keysDownRef.current['d']) p1ManualPosRef.current.x = Math.min(0.45, p1ManualPosRef.current.x + step);
+            p1Target = p1ManualPosRef.current;
+          }
+          // P2 is AI Bot!
+          engine.updateAI(settings.aiDifficulty, 0.016);
+        } else {
+          // Local 2-Player Keyboard / Mouse
+          // P1: Mouse or W/S/A/D
+          if (keysDownRef.current['w']) p1ManualPosRef.current.y = Math.max(0.08, p1ManualPosRef.current.y - 0.02);
+          if (keysDownRef.current['s']) p1ManualPosRef.current.y = Math.min(0.92, p1ManualPosRef.current.y + 0.02);
+          if (keysDownRef.current['a']) p1ManualPosRef.current.x = Math.max(0.05, p1ManualPosRef.current.x - 0.02);
+          if (keysDownRef.current['d']) p1ManualPosRef.current.x = Math.min(0.45, p1ManualPosRef.current.x + 0.02);
+          p1Target = mousePosRef.current && mousePosRef.current.x < 0.5 ? mousePosRef.current : p1ManualPosRef.current;
+
+          // P2: Arrow keys
+          if (keysDownRef.current['arrowup']) p2ManualPosRef.current.y = Math.max(0.08, p2ManualPosRef.current.y - 0.02);
+          if (keysDownRef.current['arrowdown']) p2ManualPosRef.current.y = Math.min(0.92, p2ManualPosRef.current.y + 0.02);
+          if (keysDownRef.current['arrowleft']) p2ManualPosRef.current.x = Math.max(0.55, p2ManualPosRef.current.x - 0.02);
+          if (keysDownRef.current['arrowright']) p2ManualPosRef.current.x = Math.min(0.95, p2ManualPosRef.current.x + 0.02);
+          p2Target = p2ManualPosRef.current;
+        }
+
+        if (controlMode !== 'vs-ai') {
+          engine.updateTargets(p1Target, p2Target);
+        } else {
+          // In vs-ai, P1 target is updated, P2 target is computed inside updateAI
+          engine.updateTargets(p1Target, { x: engine.p2Paddle.targetX / engine.width, y: engine.p2Paddle.targetY / engine.height });
+        }
+      }
+
+      animId = requestAnimationFrame(tickInput);
+    };
+
+    animId = requestAnimationFrame(tickInput);
+    return () => cancelAnimationFrame(animId);
+  }, [controlMode, p1Hand, p2Hand, isPaused, settings.aiDifficulty]);
+
+  return (
+    <div
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      className="relative w-full h-full flex items-center justify-center p-4 bg-[#0a0d12]"
+    >
+      <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-[#1e293b]">
+        <canvas
+          ref={canvasRef}
+          width={900}
+          height={560}
+          className="block cursor-crosshair"
+        />
+
+        {/* Dynamic tracking lost warnings if in camera mode */}
+        {controlMode === 'camera' && !p1Hand.isDetected && !isPaused && (
+          <div className="absolute top-4 left-6 bg-[#168BFF]/20 border border-[#168BFF] text-[#168BFF] px-3 py-1.5 rounded-lg text-xs font-mono backdrop-blur-md animate-pulse">
+            ⚠️ P1 (BLUE) Hand Lost
+          </div>
+        )}
+        {controlMode === 'camera' && !p2Hand.isDetected && !isPaused && (
+          <div className="absolute top-4 right-6 bg-[#E65361]/20 border border-[#E65361] text-[#E65361] px-3 py-1.5 rounded-lg text-xs font-mono backdrop-blur-md animate-pulse">
+            ⚠️ P2 (RED) Hand Lost
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

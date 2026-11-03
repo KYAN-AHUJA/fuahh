@@ -3,18 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview --host 0.0.0.0 --port 3000",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@mediapipe/hands": "^0.4.1646427781",
-    "@mediapipe/camera_utils": "^0.4.1646427781",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.358.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "shadcn-ui": "^0.3.1"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.0",

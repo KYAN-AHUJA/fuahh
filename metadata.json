@@ -1,0 +1,6 @@
+{
+  "name": "NEON ARENA",
+  "description": "Gesture-controlled webcam neon air hockey and table tennis arena with MediaPipe hand tracking.",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
