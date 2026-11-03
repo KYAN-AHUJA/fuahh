@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NEON ARENA – Game</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/style.css">
+  <!-- p5.js and MediaPipe CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+</head>
+<body>
+  <div id="hud">
+    <div class="mode">Mode: <span id="modeName">Air Hockey</span></div>
+    <div class="score">🟦 <span id="p1Score">0</span> – <span id="p2Score">0</span> 🟪</div>
+    <div class="timer">⏱ <span id="timer">60</span>s</div>
+  </div>
+  <button id="gearBtn" class="btn">⚙️</button>
+  <button id="muteBtn" class="btn">🔇 Mute</button>
+  <button id="fullScreenBtn" class="btn">⛶ Fullscreen</button>
+  <button id="modeBtn" class="btn">Switch Mode</button>
+  <div id="glassOverlay"></div>
+  <div id="settingsModal">
+    <h3>Settings</h3>
+    <label>Red Target <input type="color" id="redTarget" value="#ff0000"></label>
+    <label>Blue Target <input type="color" id="blueTarget" value="#0000ff"></label>
+    <label>Colour Tolerance <input type="range" id="tolerance" min="0" max="200" value="80"></label>
+    <span id="tolVal">80</span>
+    <label>Difficulty
+      <select id="difficulty">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+    </label>
+    <button id="closeSettings" class="btn">Close</button>
+  </div>
+  <script src="js/game.js"></script>
+</body>
+</html>
