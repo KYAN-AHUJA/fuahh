@@ -199,7 +199,7 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
         {/* Dynamic tracking lost warnings if in camera mode */}
         {controlMode === 'camera' && !p1Hand.isDetected && !isPaused && (
           <div className="absolute top-4 left-6 bg-[#168BFF]/20 border border-[#168BFF] text-[#168BFF] px-3 py-1.5 rounded-lg text-xs font-mono backdrop-blur-md animate-pulse">
-            ⚠️ P1 (BLUE) Hand Lost
+            ⚠️ P1 Black Marker Lost
           </div>
         )}
         {controlMode === 'camera' && !p2Hand.isDetected && !isPaused && (

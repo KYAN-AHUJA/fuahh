@@ -39,9 +39,9 @@ const DEFAULT_SETTINGS: GameSettings = {
   sfxVolume: 0.5,
   showHandPreview: true,
   smoothingFactor: 0.25,
-  p1ColorTarget: { r: 22, g: 139, b: 255, hex: '#168BFF' },
+  p1ColorTarget: { r: 18, g: 18, b: 18, hex: '#121212' },
   p2ColorTarget: { r: 230, g: 83, b: 97, hex: '#E65361' },
-  colorTolerance: 80,
+  colorTolerance: 120,
   colorTrackingMode: 'color-priority',
 };
 
@@ -81,6 +81,7 @@ export const App: React.FC = () => {
   // Camera & Hand Tracking Hooks
   const {
     videoRef,
+    stream: cameraStream,
     status: cameraStatus,
     errorMessage: cameraErrorMessage,
     startCamera,
@@ -269,7 +270,7 @@ export const App: React.FC = () => {
         <CameraSetup
           status={cameraStatus}
           errorMessage={cameraErrorMessage}
-          videoRef={videoRef}
+          stream={cameraStream}
           onRequestCamera={() => startCamera()}
           onContinue={() => setScreen('calibration')}
           onFallbackToKeyboard={() => {
@@ -297,7 +298,7 @@ export const App: React.FC = () => {
               colorTolerance: tol,
             }));
           }}
-          onCalibrationComplete={() => startMatch()}
+          onCalibrationComplete={startMatch}
           onBack={() => setScreen('camera-setup')}
         />
       )}

@@ -44,7 +44,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#168BFF]/10 border border-[#168BFF]/40">
           <div className={`w-2.5 h-2.5 rounded-full ${controlMode === 'camera' ? (p1Hand.isDetected ? 'bg-[#168BFF] animate-pulse' : 'bg-gray-600') : 'bg-[#168BFF]'}`} />
-          <span className="font-bold text-sm tracking-wide text-[#168BFF]">P1 BLUE</span>
+          <span className="font-bold text-sm tracking-wide text-[#cbd5e1]">P1 BLACK</span>
         </div>
         <span className="font-mono text-3xl font-extrabold text-white tracking-wider px-2">
           {scores.p1}

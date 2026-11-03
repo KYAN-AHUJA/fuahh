@@ -76,7 +76,7 @@ export const InputSetup: React.FC<InputSetupProps> = ({
                 Webcam Hands
               </h3>
               <p className="text-xs text-[#94a3b8] leading-relaxed mb-4">
-                Track both players through a single webcam with MediaPipe. P1 (Left hand / Blue), P2 (Right hand / Red).
+                Track both players through one webcam. P1 uses a black wrist marker; P2 uses a red wrist marker.
               </p>
             </div>
 

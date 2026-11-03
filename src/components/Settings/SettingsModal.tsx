@@ -149,24 +149,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </span>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <label className="flex items-center justify-between p-2 rounded-lg bg-[#141a24] border border-[#1e293b] text-xs">
-                <span className="text-[#168BFF] font-semibold">P1 Blue</span>
-                <input
-                  type="color"
-                  value={settings.p1ColorTarget?.hex || '#168BFF'}
-                  onChange={e => {
-                    const hex = e.target.value;
-                    const c = parseInt(hex.slice(1), 16);
-                    onUpdateSettings({
-                      p1ColorTarget: {
-                        r: (c >> 16) & 255,
-                        g: (c >> 8) & 255,
-                        b: c & 255,
-                        hex,
-                      },
-                    });
-                  }}
-                  className="w-7 h-7 rounded border-0 bg-transparent cursor-pointer"
-                />
+                <span className="text-[#cbd5e1] font-semibold">P1 Black Marker</span>
+                <span className="w-7 h-7 rounded border border-[#64748b] bg-[#121212]" aria-label="Black marker target" />
               </label>
 
               <label className="flex items-center justify-between p-2 rounded-lg bg-[#141a24] border border-[#1e293b] text-xs">
@@ -193,13 +177,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <div className="flex items-center justify-between text-xs mb-1">
               <span className="text-[#94a3b8]">Color Tolerance</span>
-              <span className="font-mono text-[#06b6d4]">{settings.colorTolerance || 80}</span>
+              <span className="font-mono text-[#06b6d4]">{settings.colorTolerance || 120}</span>
             </div>
             <input
               type="range"
               min="20"
-              max="180"
-              value={settings.colorTolerance || 80}
+              max="200"
+              value={settings.colorTolerance || 120}
               onChange={e => {
                 onUpdateSettings({ colorTolerance: parseInt(e.target.value) });
               }}

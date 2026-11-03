@@ -167,9 +167,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <div className="p-2.5 rounded-xl bg-[#E65361]/10 text-[#E65361] w-fit mb-3">
               <Users size={20} />
             </div>
-            <h3 className="font-bold text-sm text-white mb-1">Dual Red & Blue Vision</h3>
+            <h3 className="font-bold text-sm text-white mb-1">Black & Red Marker Tracking</h3>
             <p className="text-xs text-[#94a3b8] leading-normal">
-              Samples physical colors for Player 1 Blue (#168BFF) and Player 2 Red (#E65361) in real time.
+              Tracks a black wrist marker for Player 1 and a red wrist marker for Player 2, ignoring natural hand color.
             </p>
           </div>
         </div>
@@ -177,7 +177,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
       {/* Footer */}
       <footer className="max-w-6xl w-full mx-auto flex items-center justify-between text-xs text-[#64748b] border-t border-[#1e293b] pt-4 z-10">
-        <span>PLAYER 1: BLUE (#168BFF) • PLAYER 2: RED (#E65361)</span>
+        <span>PLAYER 1: BLACK MARKER • PLAYER 2: RED MARKER</span>
         <span>60 FPS DELTA-TIME CANVAS ENGINE</span>
       </footer>
     </div>

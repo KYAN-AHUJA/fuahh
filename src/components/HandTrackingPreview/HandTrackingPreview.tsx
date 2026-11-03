@@ -74,7 +74,7 @@ export const HandTrackingPreview: React.FC<HandTrackingPreviewProps> = ({
                       style={{ backgroundColor: p1Hand.detectedColor.hex }}
                     />
                   )}
-                  <span>P1 BLUE</span>
+                  <span>P1 BLACK</span>
                 </span>
                 {p1Hand.isDetected ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
               </div>

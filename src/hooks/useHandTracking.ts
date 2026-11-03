@@ -26,8 +26,8 @@ const DEFAULT_HAND: HandData = {
 interface UseHandTrackingProps {
   videoElement: HTMLVideoElement | null;
   isEnabled: boolean;
-  smoothingFactor?: number; // 0.1 .. 0.5 (lower = smoother)
-  p1ColorTarget?: ColorTarget; // Blue target
+  smoothingFactor?: number; // 0.1 .. 0.5 (lower = faster response)
+  p1ColorTarget?: ColorTarget; // Black wrist marker target
   p2ColorTarget?: ColorTarget; // Red target
   colorTolerance?: number;
   onHandsUpdate?: (p1: HandData, p2: HandData) => void;
@@ -37,9 +37,9 @@ export function useHandTracking({
   videoElement,
   isEnabled,
   smoothingFactor = 0.25,
-  p1ColorTarget = { r: 22, g: 139, b: 255, hex: '#168BFF' },
+  p1ColorTarget = { r: 18, g: 18, b: 18, hex: '#121212' },
   p2ColorTarget = { r: 230, g: 83, b: 97, hex: '#E65361' },
-  colorTolerance = 80,
+  colorTolerance = 120,
   onHandsUpdate,
 }: UseHandTrackingProps) {
   const [p1Hand, setP1Hand] = useState<HandData>({ ...DEFAULT_HAND, x: 0.25 });
@@ -51,11 +51,16 @@ export function useHandTracking({
   const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const handsInstanceRef = useRef<any>(null);
   const animationFrameIdRef = useRef<number | null>(null);
+  const videoFrameCallbackIdRef = useRef<number | null>(null);
   const isProcessingRef = useRef(false);
 
   // Stable tracking references
   const prevP1Ref = useRef<HandData>({ ...DEFAULT_HAND, x: 0.25 });
   const prevP2Ref = useRef<HandData>({ ...DEFAULT_HAND, x: 0.75 });
+  const rawP1PositionRef = useRef({ x: 0.25, y: 0.5 });
+  const rawP2PositionRef = useRef({ x: 0.75, y: 0.5 });
+  const p1VelocityFilterRef = useRef({ x: 0, y: 0 });
+  const p2VelocityFilterRef = useRef({ x: 0, y: 0 });
   const lastProcessedTimeRef = useRef(performance.now());
 
   // Setup offscreen canvas for color sampling
@@ -95,9 +100,9 @@ export function useHandTracking({
 
         hands.setOptions({
           maxNumHands: 2,
-          modelComplexity: 1,
-          minDetectionConfidence: 0.6,
-          minTrackingConfidence: 0.6,
+          modelComplexity: 0,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.45,
         });
 
         hands.onResults((results: any) => {
@@ -128,65 +133,102 @@ export function useHandTracking({
     };
   }, [isEnabled]);
 
-  // Color sampling from video stream inside hand/wrist bounding area
-  const sampleColor = useCallback((video: HTMLVideoElement, landmarks: any[]) => {
+  // Sample only around the wrist so natural skin color cannot identify a player.
+  const sampleColor = useCallback((
+    video: HTMLVideoElement,
+    landmarks: any[],
+    blackTarget: ColorTarget,
+    redTarget: ColorTarget,
+    tolerance: number,
+  ) => {
     if (!offscreenCanvasRef.current || !video || video.readyState < 2) {
-      return { r: 128, g: 128, b: 128, hex: '#808080' };
+      return { color: { r: 128, g: 128, b: 128, hex: '#808080' }, blackMatches: 0, redMatches: 0 };
     }
 
     try {
       const ctx = offscreenCanvasRef.current.getContext('2d', { willReadFrequently: true });
-      if (!ctx) return { r: 128, g: 128, b: 128, hex: '#808080' };
-
-      // Landmarks 0 (wrist), 1 (thumb base), 5 (index knuckle), 9 (middle knuckle), 13 (ring), 17 (pinky base)
-      const sampleIndices = [0, 1, 2, 5, 9, 13, 17];
-      let minX = 1, minY = 1, maxX = 0, maxY = 0;
-      sampleIndices.forEach(idx => {
-        const pt = landmarks[idx];
-        if (!pt) return;
-        if (pt.x < minX) minX = pt.x;
-        if (pt.y < minY) minY = pt.y;
-        if (pt.x > maxX) maxX = pt.x;
-        if (pt.y > maxY) maxY = pt.y;
-      });
-
-      // Expand slightly to capture glove / wristband
-      minX = Math.max(0, minX - 0.02);
-      minY = Math.max(0, minY - 0.02);
-      maxX = Math.min(1, maxX + 0.02);
-      maxY = Math.min(1, maxY + 0.02);
+      if (!ctx) return { color: { r: 128, g: 128, b: 128, hex: '#808080' }, blackMatches: 0, redMatches: 0 };
 
       const vw = video.videoWidth || 640;
       const vh = video.videoHeight || 480;
-
-      const sx = Math.floor(minX * vw);
-      const sy = Math.floor(minY * vh);
-      const sw = Math.max(4, Math.floor((maxX - minX) * vw));
-      const sh = Math.max(4, Math.floor((maxY - minY) * vh));
+      const wrist = landmarks[0];
+      const palm = landmarks[9];
+      const handWidth = Math.hypot((landmarks[5].x - landmarks[17].x) * vw, (landmarks[5].y - landmarks[17].y) * vh);
+      const cropSize = Math.max(16, handWidth * 0.8);
+      const wristX = wrist.x * vw;
+      const wristY = wrist.y * vh;
+      const palmX = palm.x * vw;
+      const palmY = palm.y * vh;
+      const centerX = wristX + (wristX - palmX) * 0.12;
+      const centerY = wristY + (wristY - palmY) * 0.12;
+      const sx = Math.max(0, Math.floor(centerX - cropSize / 2));
+      const sy = Math.max(0, Math.floor(centerY - cropSize / 2));
+      const sw = Math.max(1, Math.min(vw - sx, Math.ceil(cropSize)));
+      const sh = Math.max(1, Math.min(vh - sy, Math.ceil(cropSize)));
 
       ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 32, 32);
       const imgData = ctx.getImageData(0, 0, 32, 32);
       let r = 0, g = 0, b = 0, count = 0;
+      let blackR = 0, blackG = 0, blackB = 0, blackMatches = 0;
+      let redR = 0, redG = 0, redB = 0, redMatches = 0;
+      const toleranceSquared = tolerance * tolerance;
 
       for (let i = 0; i < imgData.data.length; i += 4) {
-        r += imgData.data[i];
-        g += imgData.data[i + 1];
-        b += imgData.data[i + 2];
+        const pixelR = imgData.data[i];
+        const pixelG = imgData.data[i + 1];
+        const pixelB = imgData.data[i + 2];
+        r += pixelR;
+        g += pixelG;
+        b += pixelB;
         count++;
+
+        const blackRDiff = pixelR - blackTarget.r;
+        const blackGDiff = pixelG - blackTarget.g;
+        const blackBDiff = pixelB - blackTarget.b;
+        const luminance = pixelR * 0.299 + pixelG * 0.587 + pixelB * 0.114;
+        if (
+          luminance <= 90 &&
+          blackRDiff * blackRDiff + blackGDiff * blackGDiff + blackBDiff * blackBDiff <= toleranceSquared
+        ) {
+          blackR += pixelR;
+          blackG += pixelG;
+          blackB += pixelB;
+          blackMatches++;
+        }
+
+        const redRDiff = pixelR - redTarget.r;
+        const redGDiff = pixelG - redTarget.g;
+        const redBDiff = pixelB - redTarget.b;
+        const redDominance = pixelR - Math.max(pixelG, pixelB);
+        const redSaturation = Math.max(pixelR, pixelG, pixelB) === 0
+          ? 0
+          : (Math.max(pixelR, pixelG, pixelB) - Math.min(pixelR, pixelG, pixelB)) / Math.max(pixelR, pixelG, pixelB);
+        if (
+          redDominance >= 40 &&
+          redSaturation >= 0.5 &&
+          redRDiff * redRDiff + redGDiff * redGDiff + redBDiff * redBDiff <= toleranceSquared
+        ) {
+          redR += pixelR;
+          redG += pixelG;
+          redB += pixelB;
+          redMatches++;
+        }
       }
 
-      if (count > 0) {
-        const avgR = Math.round(r / count);
-        const avgG = Math.round(g / count);
-        const avgB = Math.round(b / count);
-        const hex = `#${((1 << 24) + (avgR << 16) + (avgG << 8) + avgB).toString(16).slice(1)}`;
-        return { r: avgR, g: avgG, b: avgB, hex };
-      }
+      const selectedCount = Math.max(blackMatches, redMatches);
+      const selectedR = blackMatches >= redMatches ? blackR : redR;
+      const selectedG = blackMatches >= redMatches ? blackG : redG;
+      const selectedB = blackMatches >= redMatches ? blackB : redB;
+      const avgR = Math.round(selectedCount > 0 ? selectedR / selectedCount : r / count);
+      const avgG = Math.round(selectedCount > 0 ? selectedG / selectedCount : g / count);
+      const avgB = Math.round(selectedCount > 0 ? selectedB / selectedCount : b / count);
+      const hex = `#${((1 << 24) + (avgR << 16) + (avgG << 8) + avgB).toString(16).slice(1)}`;
+      return { color: { r: avgR, g: avgG, b: avgB, hex }, blackMatches, redMatches };
     } catch {
       // fallback
     }
 
-    return { r: 128, g: 128, b: 128, hex: '#808080' };
+    return { color: { r: 128, g: 128, b: 128, hex: '#808080' }, blackMatches: 0, redMatches: 0 };
   }, []);
 
   // Distance between 2 colors in Euclidean RGB
@@ -224,8 +266,8 @@ export function useHandTracking({
     const dt = Math.max(0.001, (now - lastProcessedTimeRef.current) / 1000);
     lastProcessedTimeRef.current = now;
 
-    const multiHandLandmarks = results.multiHandLandmarks || [];
-    const multiHandedness = results.multiHandedness || [];
+    const multiHandLandmarks: any[] = results.multiHandLandmarks || [];
+    const multiHandedness: any[] = results.multiHandedness || [];
 
     let nextP1: HandData = { ...prevP1Ref.current, isDetected: false };
     let nextP2: HandData = { ...prevP2Ref.current, isDetected: false };
@@ -254,9 +296,11 @@ export function useHandTracking({
       const { isFist, isPinching } = analyzeGesture(lms);
 
       // Sample color from video
-      const sampled = videoElement ? sampleColor(videoElement, lms) : { r: 128, g: 128, b: 128, hex: '#808080' };
-      const distBlue = colorDist(sampled, p1ColorTarget);
-      const distRed = colorDist(sampled, p2ColorTarget);
+      const sampled = videoElement
+        ? sampleColor(videoElement, lms, p1ColorTarget, p2ColorTarget, colorTolerance)
+        : { color: { r: 128, g: 128, b: 128, hex: '#808080' }, blackMatches: 0, redMatches: 0 };
+      const distBlack = colorDist(sampled.color, p1ColorTarget);
+      const distRed = colorDist(sampled.color, p2ColorTarget);
 
       return {
         x: rawX,
@@ -265,140 +309,84 @@ export function useHandTracking({
         rawLandmarks: lms,
         isFist,
         isPinching,
-        sampledColor: sampled,
-        distBlue,
+        sampledColor: sampled.color,
+        distBlack,
         distRed,
+        blackMatches: sampled.blackMatches,
+        redMatches: sampled.redMatches,
         assignedPlayer: null as 'p1' | 'p2' | null,
       };
     });
 
-    // Detect player identity by Color Matching (Blue glove/target vs Red glove/target)
-    if (candidates.length === 1) {
-      const c = candidates[0];
-      // Color affinity
-      const colorDiff = c.distRed - c.distBlue; // positive => closer to blue (P1), negative => closer to red (P2)
-      const colorThreshold = 15; // significant color difference
-
-      let assignToP1 = true;
-      if (Math.abs(colorDiff) > colorThreshold) {
-        // Strong color match
-        assignToP1 = colorDiff > 0;
-      } else {
-        // Fallback to spatial position and temporal distance
-        const distP1 = Math.hypot(c.x - prevP1Ref.current.x, c.y - prevP1Ref.current.y);
-        const distP2 = Math.hypot(c.x - prevP2Ref.current.x, c.y - prevP2Ref.current.y);
-        const biasP1 = c.x < 0.5 ? 0.2 : 0;
-        const biasP2 = c.x >= 0.5 ? 0.2 : 0;
-        assignToP1 = (distP1 - biasP1) < (distP2 - biasP2);
-      }
-
-      c.assignedPlayer = assignToP1 ? 'p1' : 'p2';
-
-      if (assignToP1) {
-        const smoothedX = prevP1Ref.current.x + (c.x - prevP1Ref.current.x) * (1 - smoothingFactor);
-        const smoothedY = prevP1Ref.current.y + (c.y - prevP1Ref.current.y) * (1 - smoothingFactor);
-        nextP1 = {
-          isDetected: true,
-          x: smoothedX,
-          y: smoothedY,
-          vx: (smoothedX - prevP1Ref.current.x) / dt,
-          vy: (smoothedY - prevP1Ref.current.y) / dt,
-          confidence: c.confidence,
-          rawLandmarks: c.rawLandmarks,
-          isFist: c.isFist,
-          isPinching: c.isPinching,
-          lastSeen: now,
-          detectedColor: c.sampledColor,
-          colorScore: Math.max(0, 1 - c.distBlue / 255),
-        };
-      } else {
-        const smoothedX = prevP2Ref.current.x + (c.x - prevP2Ref.current.x) * (1 - smoothingFactor);
-        const smoothedY = prevP2Ref.current.y + (c.y - prevP2Ref.current.y) * (1 - smoothingFactor);
-        nextP2 = {
-          isDetected: true,
-          x: smoothedX,
-          y: smoothedY,
-          vx: (smoothedX - prevP2Ref.current.x) / dt,
-          vy: (smoothedY - prevP2Ref.current.y) / dt,
-          confidence: c.confidence,
-          rawLandmarks: c.rawLandmarks,
-          isFist: c.isFist,
-          isPinching: c.isPinching,
-          lastSeen: now,
-          detectedColor: c.sampledColor,
-          colorScore: Math.max(0, 1 - c.distRed / 255),
-        };
-      }
-    } else if (candidates.length >= 2) {
-      const [c0, c1] = [candidates[0], candidates[1]];
-
-      // Compare pair matching:
-      // Option A: c0 is Blue (P1), c1 is Red (P2)
-      const costA = c0.distBlue + c1.distRed;
-      // Option B: c1 is Blue (P1), c0 is Red (P2)
-      const costB = c1.distBlue + c0.distRed;
-
-      let cBlue = c0;
-      let cRed = c1;
-
-      // If color difference is noticeable, assign by color!
-      if (Math.abs(costA - costB) > 20) {
-        if (costA <= costB) {
-          cBlue = c0;
-          cRed = c1;
-        } else {
-          cBlue = c1;
-          cRed = c0;
-        }
-      } else {
-        // Fallback: spatial order (leftmost is P1, rightmost is P2)
-        if (c0.x <= c1.x) {
-          cBlue = c0;
-          cRed = c1;
-        } else {
-          cBlue = c1;
-          cRed = c0;
-        }
-      }
-
-      cBlue.assignedPlayer = 'p1';
-      cRed.assignedPlayer = 'p2';
-
-      // Smooth P1
-      const p1X = prevP1Ref.current.x + (cBlue.x - prevP1Ref.current.x) * (1 - smoothingFactor);
-      const p1Y = prevP1Ref.current.y + (cBlue.y - prevP1Ref.current.y) * (1 - smoothingFactor);
-      nextP1 = {
-        isDetected: true,
-        x: p1X,
-        y: p1Y,
-        vx: (p1X - prevP1Ref.current.x) / dt,
-        vy: (p1Y - prevP1Ref.current.y) / dt,
-        confidence: cBlue.confidence,
-        rawLandmarks: cBlue.rawLandmarks,
-        isFist: cBlue.isFist,
-        isPinching: cBlue.isPinching,
-        lastSeen: now,
-        detectedColor: cBlue.sampledColor,
-        colorScore: Math.max(0, 1 - cBlue.distBlue / 255),
+    const toHandData = (
+      candidate: typeof candidates[number],
+      previous: HandData,
+      previousRaw: { x: number; y: number },
+      filteredVelocity: { x: number; y: number },
+      targetDistance: number,
+    ): HandData => {
+      const alphaForCutoff = (cutoff: number) => {
+        const tau = 1 / (2 * Math.PI * cutoff);
+        return 1 / (1 + tau / dt);
       };
+      const minCutoff = 2.4 - smoothingFactor * 3;
+      const derivativeAlpha = alphaForCutoff(1);
+      const rawVelocityX = (candidate.x - previousRaw.x) / dt;
+      const rawVelocityY = (candidate.y - previousRaw.y) / dt;
+      const velocityX = filteredVelocity.x + derivativeAlpha * (rawVelocityX - filteredVelocity.x);
+      const velocityY = filteredVelocity.y + derivativeAlpha * (rawVelocityY - filteredVelocity.y);
+      const alphaX = alphaForCutoff(minCutoff + 4 * Math.abs(velocityX));
+      const alphaY = alphaForCutoff(minCutoff + 4 * Math.abs(velocityY));
+      const x = previous.x + (candidate.x - previous.x) * alphaX;
+      const y = previous.y + (candidate.y - previous.y) * alphaY;
 
-      // Smooth P2
-      const p2X = prevP2Ref.current.x + (cRed.x - prevP2Ref.current.x) * (1 - smoothingFactor);
-      const p2Y = prevP2Ref.current.y + (cRed.y - prevP2Ref.current.y) * (1 - smoothingFactor);
-      nextP2 = {
+      previousRaw.x = candidate.x;
+      previousRaw.y = candidate.y;
+      filteredVelocity.x = velocityX;
+      filteredVelocity.y = velocityY;
+
+      return {
         isDetected: true,
-        x: p2X,
-        y: p2Y,
-        vx: (p2X - prevP2Ref.current.x) / dt,
-        vy: (p2Y - prevP2Ref.current.y) / dt,
-        confidence: cRed.confidence,
-        rawLandmarks: cRed.rawLandmarks,
-        isFist: cRed.isFist,
-        isPinching: cRed.isPinching,
+        x,
+        y,
+        vx: (x - previous.x) / dt,
+        vy: (y - previous.y) / dt,
+        confidence: candidate.confidence,
+        rawLandmarks: candidate.rawLandmarks,
+        isFist: candidate.isFist,
+        isPinching: candidate.isPinching,
         lastSeen: now,
-        detectedColor: cRed.sampledColor,
-        colorScore: Math.max(0, 1 - cRed.distRed / 255),
+        detectedColor: candidate.sampledColor,
+        colorScore: Math.max(0, 1 - targetDistance / 255),
       };
+    };
+
+    const blackCandidate = candidates
+      .filter(candidate => candidate.blackMatches >= 12 && candidate.blackMatches > candidate.redMatches)
+      .sort((a, b) => b.blackMatches - a.blackMatches)[0];
+    const redCandidate = candidates
+      .filter(candidate => candidate.redMatches >= 12 && candidate.redMatches > candidate.blackMatches)
+      .sort((a, b) => b.redMatches - a.redMatches)[0];
+
+    if (blackCandidate) {
+      blackCandidate.assignedPlayer = 'p1';
+      nextP1 = toHandData(
+        blackCandidate,
+        prevP1Ref.current,
+        rawP1PositionRef.current,
+        p1VelocityFilterRef.current,
+        blackCandidate.distBlack,
+      );
+    }
+    if (redCandidate) {
+      redCandidate.assignedPlayer = 'p2';
+      nextP2 = toHandData(
+        redCandidate,
+        prevP2Ref.current,
+        rawP2PositionRef.current,
+        p2VelocityFilterRef.current,
+        redCandidate.distRed,
+      );
     }
 
     prevP1Ref.current = nextP1;
@@ -447,8 +435,9 @@ export function useHandTracking({
 
     landmarksList.forEach((landmarks: any[], idx: number) => {
       const candidate = candidates[idx];
-      const isP1 = candidate?.assignedPlayer === 'p1' || ((1 - landmarks[8].x) * width < width / 2);
-      const strokeColor = isP1 ? '#168BFF' : '#E65361';
+      const isP1 = candidate?.assignedPlayer === 'p1';
+      const isP2 = candidate?.assignedPlayer === 'p2';
+      const strokeColor = isP1 ? '#e5e7eb' : isP2 ? '#E65361' : '#94a3b8';
 
       // Draw bone connections
       ctx.strokeStyle = strokeColor;
@@ -483,7 +472,7 @@ export function useHandTracking({
           // Player indicator & detected color swatch
           ctx.fillStyle = strokeColor;
           ctx.font = 'bold 11px Inter, sans-serif';
-          ctx.fillText(isP1 ? 'P1 (BLUE)' : 'P2 (RED)', x + 12, y - 6);
+          ctx.fillText(isP1 ? 'P1 (BLACK)' : isP2 ? 'P2 (RED)' : 'MARKER MISMATCH', x + 12, y - 6);
 
           if (candidate?.sampledColor) {
             // Draw small color sample box
@@ -498,7 +487,7 @@ export function useHandTracking({
     });
   };
 
-  // Video frame loop
+  // Process only newly presented camera frames when the browser supports it.
   const sendVideoFrame = useCallback(async () => {
     if (!isEnabled || !handsInstanceRef.current || !videoElement) {
       return;
@@ -519,18 +508,36 @@ export function useHandTracking({
       }
     }
 
-    animationFrameIdRef.current = requestAnimationFrame(sendVideoFrame);
+    const videoWithFrameCallback = videoElement as HTMLVideoElement & {
+      requestVideoFrameCallback?: (callback: () => void) => number;
+    };
+    if (videoWithFrameCallback.requestVideoFrameCallback) {
+      videoFrameCallbackIdRef.current = videoWithFrameCallback.requestVideoFrameCallback(() => {
+        void sendVideoFrame();
+      });
+    } else {
+      animationFrameIdRef.current = requestAnimationFrame(() => {
+        void sendVideoFrame();
+      });
+    }
   }, [isEnabled, videoElement]);
 
   useEffect(() => {
     if (isEnabled && isModelReady && videoElement) {
-      animationFrameIdRef.current = requestAnimationFrame(sendVideoFrame);
+      void sendVideoFrame();
     }
 
     return () => {
       if (animationFrameIdRef.current) {
         cancelAnimationFrame(animationFrameIdRef.current);
         animationFrameIdRef.current = null;
+      }
+      if (videoFrameCallbackIdRef.current !== null && videoElement) {
+        const videoWithFrameCallback = videoElement as HTMLVideoElement & {
+          cancelVideoFrameCallback?: (callbackId: number) => void;
+        };
+        videoWithFrameCallback.cancelVideoFrameCallback?.(videoFrameCallbackIdRef.current);
+        videoFrameCallbackIdRef.current = null;
       }
     };
   }, [isEnabled, isModelReady, videoElement, sendVideoFrame]);

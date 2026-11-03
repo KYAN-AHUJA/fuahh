@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Camera, AlertCircle, CheckCircle2, ArrowLeft, ArrowRight, RefreshCw, Gamepad2 } from 'lucide-react';
 import { CameraStatus } from '../../hooks/useCamera';
 import { audioManager } from '../../audio/AudioManager';
@@ -6,7 +6,7 @@ import { audioManager } from '../../audio/AudioManager';
 interface CameraSetupProps {
   status: CameraStatus;
   errorMessage: string | null;
-  videoRef: React.RefObject<HTMLVideoElement>;
+  stream: MediaStream | null;
   onRequestCamera: () => void;
   onContinue: () => void;
   onFallbackToKeyboard: () => void;
@@ -16,12 +16,24 @@ interface CameraSetupProps {
 export const CameraSetup: React.FC<CameraSetupProps> = ({
   status,
   errorMessage,
-  videoRef,
+  stream,
   onRequestCamera,
   onContinue,
   onFallbackToKeyboard,
   onBack,
 }) => {
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = previewVideoRef.current;
+    if (!video || !stream) return;
+    video.srcObject = stream;
+    video.play().catch(() => {});
+    return () => {
+      video.srcObject = null;
+    };
+  }, [stream]);
+
   return (
     <div className="relative w-full h-full min-h-screen flex flex-col justify-between p-8 bg-[#0a0d12] text-[#f3f4f6]">
       {/* Header */}
@@ -58,7 +70,7 @@ export const CameraSetup: React.FC<CameraSetupProps> = ({
         {/* Video Preview Box */}
         <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-[#0f141c] border border-[#263346] mb-6 shadow-2xl flex items-center justify-center">
           <video
-            ref={videoRef}
+            ref={previewVideoRef}
             autoPlay
             playsInline
             muted

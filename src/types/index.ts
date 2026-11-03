@@ -54,7 +54,7 @@ export interface GameSettings {
   sfxVolume: number; // 0..1
   showHandPreview: boolean;
   smoothingFactor: number; // 0.1 .. 0.5
-  p1ColorTarget: ColorTarget; // Blue target
+  p1ColorTarget: ColorTarget; // Black marker target
   p2ColorTarget: ColorTarget; // Red target
   colorTolerance: number; // 0..200
   colorTrackingMode: 'color-priority' | 'spatial-priority';

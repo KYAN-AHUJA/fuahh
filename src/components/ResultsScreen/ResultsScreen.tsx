@@ -18,7 +18,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
 }) => {
   const isP1Winner = stats.winner === 'p1';
   const winnerColor = isP1Winner ? '#168BFF' : '#E65361';
-  const winnerTitle = isP1Winner ? 'PLAYER 1 (BLUE) WINS!' : 'PLAYER 2 (RED) WINS!';
+  const winnerTitle = isP1Winner ? 'PLAYER 1 WINS!' : 'PLAYER 2 WINS!';
 
   useEffect(() => {
     audioManager.playVictory();

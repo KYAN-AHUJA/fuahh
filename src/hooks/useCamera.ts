@@ -7,6 +7,7 @@ export function useCamera() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  const [stream, setStream] = useState<MediaStream | null>(null);
   
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -38,6 +39,7 @@ export function useCamera() {
       });
       streamRef.current = null;
     }
+    setStream(null);
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
@@ -68,6 +70,7 @@ export function useCamera() {
         video: {
           width: { ideal: 640 },
           height: { ideal: 480 },
+          frameRate: { ideal: 60 },
           facingMode: 'user',
           deviceId: deviceIdToUse ? { exact: deviceIdToUse } : undefined,
         },
@@ -75,6 +78,7 @@ export function useCamera() {
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
+      setStream(stream);
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -82,7 +86,6 @@ export function useCamera() {
         videoRef.current.muted = true;
         await videoRef.current.play().catch(() => {});
       }
-
       setStatus('active');
       refreshDevices();
       return true;
@@ -112,6 +115,7 @@ export function useCamera() {
 
   return {
     videoRef,
+    stream,
     status,
     errorMessage,
     devices,
