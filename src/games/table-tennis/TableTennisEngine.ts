@@ -142,10 +142,10 @@ export class TableTennisEngine {
     if (!this.isRunning) return;
     const rawDt = (time - this.lastTime) / 1000;
     this.lastTime = time;
-    const dt = Math.min(0.033, Math.max(0.001, rawDt));
+    const dt = Math.min(0.05, Math.max(0.001, rawDt));
 
-    // Sub-stepping for smooth 60 FPS physics
-    const subSteps = 2;
+    // Keep physics steps small enough to avoid tunneling at lower frame rates.
+    const subSteps = Math.max(2, Math.ceil(dt * 120));
     const subDt = dt / subSteps;
     for (let step = 0; step < subSteps; step++) {
       this.updatePhysics(subDt);
