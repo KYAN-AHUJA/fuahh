@@ -11,6 +11,7 @@ import {
 } from './types';
 import { useCamera } from './hooks/useCamera';
 import { useHandTracking } from './hooks/useHandTracking';
+import { useBoxingTracking } from './hooks/useBoxingTracking';
 import { audioManager } from './audio/AudioManager';
 
 // Views
@@ -23,6 +24,7 @@ import { Calibration } from './components/Calibration/Calibration';
 // Game Engines
 import { AirHockey } from './games/air-hockey/AirHockey';
 import { TableTennis } from './games/table-tennis/TableTennis';
+import { Boxing } from './games/boxing/Boxing';
 
 // Overlays & HUD
 import { GameHUD } from './components/GameHUD/GameHUD';
@@ -56,6 +58,7 @@ export const App: React.FC = () => {
   const [scores, setScores] = useState<PlayerScore>({ p1: 0, p2: 0 });
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [boxingRestartKey, setBoxingRestartKey] = useState(0);
 
   // Settings & Modals
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS);
@@ -93,17 +96,29 @@ export const App: React.FC = () => {
   const {
     p1Hand,
     p2Hand,
+    handTrackingRef,
     isModelReady,
     previewCanvasRef,
     trackingFps,
     handsDetectedCount,
   } = useHandTracking({
     videoElement: videoRef.current,
-    isEnabled: controlMode === 'camera' && (screen === 'camera-setup' || screen === 'calibration' || screen === 'gameplay'),
+    isEnabled: activeGame !== 'boxing' && controlMode === 'camera' && (screen === 'camera-setup' || screen === 'calibration' || screen === 'gameplay'),
     smoothingFactor: settings.smoothingFactor,
     p1ColorTarget: settings.p1ColorTarget,
     p2ColorTarget: settings.p2ColorTarget,
     colorTolerance: settings.colorTolerance,
+  });
+
+  const {
+    players: boxingTracking,
+    playersRef: boxingTrackingRef,
+    isModelReady: isBoxingModelReady,
+    trackingError: boxingTrackingError,
+    previewCanvasRef: boxingPreviewCanvasRef,
+  } = useBoxingTracking({
+    videoElement: videoRef.current,
+    isEnabled: activeGame === 'boxing' && controlMode === 'camera' && (screen === 'calibration' || screen === 'gameplay'),
   });
 
   // Track Fullscreen state
@@ -144,7 +159,7 @@ export const App: React.FC = () => {
   // Match timer loop
   useEffect(() => {
     let interval: number;
-    if (screen === 'gameplay' && matchState === 'playing') {
+    if (screen === 'gameplay' && matchState === 'playing' && activeGame !== 'boxing') {
       interval = window.setInterval(() => {
         setTimerSeconds(prev => prev + 1);
       }, 1000);
@@ -152,10 +167,10 @@ export const App: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [screen, matchState]);
+  }, [screen, matchState, activeGame]);
 
   useEffect(() => {
-    if (screen !== 'gameplay' || matchState !== 'playing' || settings.matchDuration <= 0 || timerSeconds < settings.matchDuration) {
+    if (activeGame === 'boxing' || screen !== 'gameplay' || matchState !== 'playing' || settings.matchDuration <= 0 || timerSeconds < settings.matchDuration) {
       return;
     }
 
@@ -166,7 +181,7 @@ export const App: React.FC = () => {
     matchStatsRef.current.p2Score = scores.p2;
     setFinalStats({ ...matchStatsRef.current });
     setMatchState('match-complete');
-  }, [matchState, scores.p1, scores.p2, screen, settings.matchDuration, timerSeconds]);
+  }, [activeGame, matchState, scores.p1, scores.p2, screen, settings.matchDuration, timerSeconds]);
 
   useEffect(() => () => {
     if (countdownIntervalRef.current !== null) {
@@ -219,6 +234,7 @@ export const App: React.FC = () => {
       gameType: activeGame,
     };
     setFinalStats(null);
+    if (activeGame === 'boxing') setBoxingRestartKey(key => key + 1);
     triggerMatchCountdown();
   }, [activeGame, triggerMatchCountdown]);
 
@@ -258,6 +274,20 @@ export const App: React.FC = () => {
     if (rallyCount && rallyCount > matchStatsRef.current.maxRally) {
       matchStatsRef.current.maxRally = rallyCount;
     }
+  }, []);
+
+  const handleBoxingRoundEnd = useCallback((_winner: PlayerId, p1Wins: number, p2Wins: number) => {
+    setScores({ p1: p1Wins, p2: p2Wins });
+    matchStatsRef.current.p1Score = p1Wins;
+    matchStatsRef.current.p2Score = p2Wins;
+    matchStatsRef.current.goalsScored = p1Wins + p2Wins;
+  }, []);
+
+  const handleBoxingMatchEnd = useCallback((winner: PlayerId) => {
+    matchStatsRef.current.winner = winner;
+    matchStatsRef.current.duration = Math.round((Date.now() - matchStartTimeRef.current) / 1000);
+    setFinalStats({ ...matchStatsRef.current });
+    setMatchState('match-complete');
   }, []);
 
   // Update Settings
@@ -302,6 +332,7 @@ export const App: React.FC = () => {
       {/* Screen 3: Input Method Setup */}
       {screen === 'input-setup' && (
         <InputSetup
+          gameType={activeGame}
           selectedMode={controlMode}
           onSelectMode={setControlMode}
           onContinue={() => {
@@ -341,6 +372,11 @@ export const App: React.FC = () => {
           p1Hand={p1Hand}
           p2Hand={p2Hand}
           previewCanvasRef={previewCanvasRef}
+          gameType={activeGame}
+          boxingTracking={boxingTracking}
+          boxingPreviewCanvasRef={boxingPreviewCanvasRef}
+          boxingModelReady={isBoxingModelReady}
+          boxingTrackingError={boxingTrackingError}
           onCalibrationComplete={startMatch}
           onBack={() => setScreen('camera-setup')}
         />
@@ -357,6 +393,8 @@ export const App: React.FC = () => {
             timerSeconds={timerSeconds}
             p1Hand={p1Hand}
             p2Hand={p2Hand}
+            p1InputReady={activeGame === 'boxing' ? boxingTracking.p1.head.isDetected && boxingTracking.p1.leftHand.isDetected && boxingTracking.p1.rightHand.isDetected : undefined}
+            p2InputReady={activeGame === 'boxing' ? boxingTracking.p2.head.isDetected && boxingTracking.p2.leftHand.isDetected && boxingTracking.p2.rightHand.isDetected : undefined}
             onPause={() => setMatchState('paused')}
             onRestart={resetMatch}
             onOpenSettings={() => setIsSettingsOpen(true)}
@@ -370,6 +408,19 @@ export const App: React.FC = () => {
               <AirHockey
                 p1Hand={p1Hand}
                 p2Hand={p2Hand}
+                handTrackingRef={handTrackingRef}
+                controlMode={controlMode}
+                settings={settings}
+                videoElement={videoRef.current}
+                isPaused={matchState !== 'playing'}
+                onScore={handleScore}
+                onHit={handleHit}
+              />
+            ) : activeGame === 'table-tennis' ? (
+              <TableTennis
+                p1Hand={p1Hand}
+                p2Hand={p2Hand}
+                handTrackingRef={handTrackingRef}
                 controlMode={controlMode}
                 settings={settings}
                 videoElement={videoRef.current}
@@ -378,15 +429,19 @@ export const App: React.FC = () => {
                 onHit={handleHit}
               />
             ) : (
-              <TableTennis
-                p1Hand={p1Hand}
-                p2Hand={p2Hand}
+              <Boxing
+                tracking={boxingTracking}
+                trackingRef={boxingTrackingRef}
                 controlMode={controlMode}
                 settings={settings}
-                videoElement={videoRef.current}
-                isPaused={matchState !== 'playing'}
-                onScore={handleScore}
+                isPaused={matchState !== 'playing' || isSettingsOpen}
+                restartKey={boxingRestartKey}
+                showTrackingPreview={showHandPreview}
+                onCloseTrackingPreview={() => setShowHandPreview(false)}
+                onRoundEnd={handleBoxingRoundEnd}
+                onMatchEnd={handleBoxingMatchEnd}
                 onHit={handleHit}
+                previewCanvasRef={boxingPreviewCanvasRef}
               />
             )}
           </div>
@@ -401,7 +456,7 @@ export const App: React.FC = () => {
           )}
 
           {/* Floating PIP Hand Tracking Preview (Top-Right) */}
-          {controlMode === 'camera' && showHandPreview && (
+          {activeGame !== 'boxing' && controlMode === 'camera' && showHandPreview && (
             <HandTrackingPreview
               canvasRef={previewCanvasRef}
               p1Hand={p1Hand}

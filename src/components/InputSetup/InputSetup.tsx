@@ -1,9 +1,10 @@
 import React from 'react';
-import { ControlMode } from '../../types';
+import { ControlMode, GameType } from '../../types';
 import { Camera, Gamepad2, Bot, ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { audioManager } from '../../audio/AudioManager';
 
 interface InputSetupProps {
+  gameType: GameType;
   selectedMode: ControlMode;
   onSelectMode: (mode: ControlMode) => void;
   onContinue: () => void;
@@ -11,6 +12,7 @@ interface InputSetupProps {
 }
 
 export const InputSetup: React.FC<InputSetupProps> = ({
+  gameType,
   selectedMode,
   onSelectMode,
   onContinue,
@@ -73,16 +75,27 @@ export const InputSetup: React.FC<InputSetupProps> = ({
               </div>
 
               <h3 className="text-base font-bold text-[#EAE7DE] mb-1 uppercase tracking-wide">
-                Webcam Hands
+                {gameType === 'boxing' ? 'Webcam Pose' : 'Webcam Hands'}
               </h3>
               <p className="text-xs text-[#A6AAA2] leading-relaxed mb-4">
-                Full gesture control. P1 controls Blue on the left; P2 controls Red on the right.
+                {gameType === 'boxing'
+                  ? 'Track each player’s head and both wrists. Stand in the matching left or right camera zone.'
+                  : 'Full gesture control. P1 controls Blue on the left; P2 controls Red on the right.'}
               </p>
             </div>
 
             <div className="pt-3 border-t border-[#303833] text-[11px] font-mono text-[#A6AAA2] space-y-1">
-              <div>• Left hand: Player 1 (Blue)</div>
-              <div>• Right hand: Player 2 (Red)</div>
+              {gameType === 'boxing' ? (
+                <>
+                  <div>• P1: head + left / right wrist</div>
+                  <div>• P2: head + left / right wrist</div>
+                </>
+              ) : (
+                <>
+                  <div>• Left hand: Player 1 (Blue)</div>
+                  <div>• Right hand: Player 2 (Red)</div>
+                </>
+              )}
             </div>
           </div>
 
@@ -119,8 +132,17 @@ export const InputSetup: React.FC<InputSetupProps> = ({
             </div>
 
             <div className="pt-3 border-t border-[#303833] text-[11px] font-mono text-[#A6AAA2] space-y-1">
-              <div>• P1: W / S Keys or Mouse</div>
-              <div>• P2: Up / Down Arrow Keys</div>
+              {gameType === 'boxing' ? (
+                <>
+                  <div>• P1: A / D move · W duck · S guard · F / G / V punch</div>
+                  <div>• P2: J / L move · I duck · K guard · U / O / M punch</div>
+                </>
+              ) : (
+                <>
+                  <div>• P1: W / S Keys or Mouse</div>
+                  <div>• P2: Up / Down Arrow Keys</div>
+                </>
+              )}
             </div>
           </div>
 
@@ -157,8 +179,17 @@ export const InputSetup: React.FC<InputSetupProps> = ({
             </div>
 
             <div className="pt-3 border-t border-[#303833] text-[11px] font-mono text-[#A6AAA2] space-y-1">
-              <div>• P1: Mouse or W / S Keys</div>
-              <div>• P2: Reactive AI Opponent</div>
+              {gameType === 'boxing' ? (
+                <>
+                  <div>• P1: A / D move · W duck · S guard · F / G / V punch</div>
+                  <div>• P2: Reactive AI Opponent</div>
+                </>
+              ) : (
+                <>
+                  <div>• P1: Mouse or W / S Keys</div>
+                  <div>• P2: Reactive AI Opponent</div>
+                </>
+              )}
             </div>
           </div>
         </div>

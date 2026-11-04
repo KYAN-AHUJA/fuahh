@@ -10,6 +10,8 @@ interface GameHUDProps {
   timerSeconds: number;
   p1Hand: HandData;
   p2Hand: HandData;
+  p1InputReady?: boolean;
+  p2InputReady?: boolean;
   onPause: () => void;
   onRestart: () => void;
   onOpenSettings: () => void;
@@ -24,6 +26,8 @@ export const GameHUD: React.FC<GameHUDProps> = ({
   timerSeconds,
   p1Hand,
   p2Hand,
+  p1InputReady,
+  p2InputReady,
   onPause,
   onRestart,
   onOpenSettings,
@@ -35,6 +39,8 @@ export const GameHUD: React.FC<GameHUDProps> = ({
     const rem = secs % 60;
     return `${mins < 10 ? '0' : ''}${mins}:${rem < 10 ? '0' : ''}${rem}`;
   };
+  const p1Ready = p1InputReady ?? p1Hand.isDetected;
+  const p2Ready = p2InputReady ?? p2Hand.isDetected;
 
   return (
     <>
@@ -46,7 +52,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
             <span
               className={`w-2.5 h-2.5 rounded-full ${
                 controlMode === 'camera'
-                  ? p1Hand.isDetected
+                  ? p1Ready
                     ? 'bg-[#168BFF]'
                     : 'bg-[#303833]'
                   : 'bg-[#168BFF]'
@@ -64,10 +70,10 @@ export const GameHUD: React.FC<GameHUDProps> = ({
         {/* Centered Match Timer and Game Mode */}
         <div className="flex flex-col items-center justify-center">
           <span className="font-mono text-xl font-bold tracking-widest text-[#EAE7DE]">
-            {formatTime(timerSeconds)}
+            {gameType === 'boxing' ? 'BO3' : formatTime(timerSeconds)}
           </span>
           <span className="text-[10px] uppercase tracking-widest text-[#A6AAA2] font-medium mt-0.5">
-            {gameType === 'air-hockey' ? 'AIR HOCKEY' : 'ARCADE TABLE TENNIS'}
+            {gameType === 'air-hockey' ? 'AIR HOCKEY' : gameType === 'boxing' ? 'NEON BOXING' : 'ARCADE TABLE TENNIS'}
           </span>
         </div>
 
@@ -83,7 +89,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
             <span
               className={`w-2.5 h-2.5 rounded-full ${
                 controlMode === 'camera'
-                  ? p2Hand.isDetected
+                  ? p2Ready
                     ? 'bg-[#E65361]'
                     : 'bg-[#303833]'
                   : 'bg-[#E65361]'

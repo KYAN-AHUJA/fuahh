@@ -1,10 +1,11 @@
-import React, { useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { AirHockeyEngine } from './AirHockeyEngine';
 import { HandData, ControlMode, PlayerId, GameSettings } from '../../types';
 
 interface AirHockeyProps {
   p1Hand: HandData;
   p2Hand: HandData;
+  handTrackingRef: React.MutableRefObject<{ p1: HandData; p2: HandData }>;
   controlMode: ControlMode;
   settings: GameSettings;
   videoElement: HTMLVideoElement | null;
@@ -16,6 +17,7 @@ interface AirHockeyProps {
 export const AirHockey: React.FC<AirHockeyProps> = ({
   p1Hand,
   p2Hand,
+  handTrackingRef,
   controlMode,
   settings,
   videoElement,
@@ -32,14 +34,6 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
   const p1ManualPosRef = useRef({ x: 0.18, y: 0.5 });
   const p2ManualPosRef = useRef({ x: 0.82, y: 0.5 });
   const mousePosRef = useRef<{ x: number; y: number } | null>(null);
-  const p1HandRef = useRef(p1Hand);
-  const p2HandRef = useRef(p2Hand);
-
-  useLayoutEffect(() => {
-    p1HandRef.current = p1Hand;
-    p2HandRef.current = p2Hand;
-  }, [p1Hand, p2Hand]);
-
   // Initialize engine
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -121,17 +115,21 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
 
   // Synchronize inputs smoothly
   useEffect(() => {
+    if (isPaused) return;
     let animId: number;
+    let lastFrameTime = performance.now();
 
-    const tickInput = () => {
+    const tickInput = (time: number) => {
+      const dt = Math.min(0.05, Math.max(0.001, (time - lastFrameTime) / 1000));
+      lastFrameTime = time;
       const engine = engineRef.current;
-      if (engine && !isPaused) {
+      if (engine) {
         let p1Target = { x: 0.18, y: 0.5 };
         let p2Target = { x: 0.82, y: 0.5 };
 
         if (controlMode === 'camera') {
-          const currentP1Hand = p1HandRef.current;
-          const currentP2Hand = p2HandRef.current;
+          const currentP1Hand = handTrackingRef.current.p1;
+          const currentP2Hand = handTrackingRef.current.p2;
           if (currentP1Hand.isDetected) {
             p1Target = { x: currentP1Hand.x, y: currentP1Hand.y };
           } else {
@@ -154,7 +152,7 @@ export const AirHockey: React.FC<AirHockeyProps> = ({
             if (keysDownRef.current['d']) p1ManualPosRef.current.x = Math.min(0.45, p1ManualPosRef.current.x + step);
             p1Target = p1ManualPosRef.current;
           }
-          engine.updateAI(settings.aiDifficulty, 0.016);
+          engine.updateAI(settings.aiDifficulty, dt);
         } else {
           // Local 2-Player Keyboard / Mouse
           if (keysDownRef.current['w']) p1ManualPosRef.current.y = Math.max(0.08, p1ManualPosRef.current.y - 0.02);

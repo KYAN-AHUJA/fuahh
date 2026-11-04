@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { HandData } from '../../types';
+import { GameType, HandData } from '../../types';
+import { BoxingPlayerTracking, BoxingTrackingState } from '../../hooks/useBoxingTracking';
 import { ArrowLeft, Check } from 'lucide-react';
 import { audioManager } from '../../audio/AudioManager';
 
@@ -7,6 +8,11 @@ interface CalibrationProps {
   p1Hand: HandData;
   p2Hand: HandData;
   previewCanvasRef: React.RefObject<HTMLCanvasElement>;
+  gameType: GameType;
+  boxingTracking?: BoxingTrackingState;
+  boxingPreviewCanvasRef?: React.RefObject<HTMLCanvasElement>;
+  boxingModelReady?: boolean;
+  boxingTrackingError?: string | null;
   onCalibrationComplete: () => void;
   onBack: () => void;
 }
@@ -15,11 +21,21 @@ export const Calibration: React.FC<CalibrationProps> = ({
   p1Hand,
   p2Hand,
   previewCanvasRef,
+  gameType,
+  boxingTracking,
+  boxingPreviewCanvasRef,
+  boxingModelReady = false,
+  boxingTrackingError,
   onCalibrationComplete,
   onBack,
 }) => {
   const [autoStarted, setAutoStarted] = useState(false);
-  const bothReady = p1Hand.isDetected && p2Hand.isDetected;
+  const isBoxing = gameType === 'boxing';
+  const playerReady = (player: BoxingPlayerTracking) =>
+    player.head.isDetected && player.leftHand.isDetected && player.rightHand.isDetected;
+  const p1Ready = isBoxing && boxingTracking ? playerReady(boxingTracking.p1) : p1Hand.isDetected;
+  const p2Ready = isBoxing && boxingTracking ? playerReady(boxingTracking.p2) : p2Hand.isDetected;
+  const bothReady = (isBoxing ? boxingModelReady : true) && p1Ready && p2Ready;
 
   // Optional subtle audio prompt when both players are detected
   useEffect(() => {
@@ -55,7 +71,7 @@ export const Calibration: React.FC<CalibrationProps> = ({
           CALIBRATION
         </h2>
         <p className="text-xs md:text-sm text-[#A6AAA2] mb-8">
-          Place both hands in front of the camera
+          {isBoxing ? 'Stand one player in each half; keep your head and both wrists visible' : 'Place both hands in front of the camera'}
         </p>
 
         {/* 3-Column Center Layout: Left Card, Center Webcam, Right Card */}
@@ -72,30 +88,44 @@ export const Calibration: React.FC<CalibrationProps> = ({
 
               <div className="mb-4">
                 <span className="text-[11px] text-[#A6AAA2] block">Detection State:</span>
-                <span className={`text-sm font-semibold ${p1Hand.isDetected ? 'text-[#168BFF]' : 'text-[#A6AAA2]'}`}>
-                  {p1Hand.isDetected ? 'Detected' : 'Searching...'}
+                <span className={`text-sm font-semibold ${p1Ready ? 'text-[#168BFF]' : 'text-[#A6AAA2]'}`}>
+                  {p1Ready ? 'Detected' : isBoxing ? 'Find 3 inputs' : 'Searching...'}
                 </span>
               </div>
 
-              <div className="mb-4">
-                <span className="text-[11px] text-[#A6AAA2] block">Confidence:</span>
-                <span className="font-mono text-lg font-bold text-[#EAE7DE]">
-                  {p1Hand.isDetected ? `${Math.round(p1Hand.confidence * 100)}%` : '0%'}
-                </span>
-              </div>
+              {isBoxing && boxingTracking ? (
+                <div className="mb-4 grid grid-cols-1 gap-1 text-[10px] font-mono uppercase">
+                  {[
+                    ['Head', boxingTracking.p1.head.isDetected],
+                    ['Left wrist', boxingTracking.p1.leftHand.isDetected],
+                    ['Right wrist', boxingTracking.p1.rightHand.isDetected],
+                  ].map(([label, detected]) => (
+                    <span key={String(label)} className={detected ? 'text-[#168BFF]' : 'text-[#A6AAA2]'}>
+                      {detected ? '●' : '○'} {label}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="mb-4">
+                  <span className="text-[11px] text-[#A6AAA2] block">Confidence:</span>
+                  <span className="font-mono text-lg font-bold text-[#EAE7DE]">
+                    {p1Hand.isDetected ? `${Math.round(p1Hand.confidence * 100)}%` : '0%'}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Small Blue Hand-Landmark Illustration */}
             <div className="w-full aspect-[4/3] rounded bg-[#0B0E0D] border border-[#303833] p-2 flex items-center justify-center">
               <svg viewBox="0 0 100 100" className="w-20 h-20 select-none" fill="none">
                 {/* Palm bones */}
-                <path d="M 50 85 L 50 55 L 30 40 L 40 25 M 50 55 L 45 22 M 50 55 L 55 20 M 50 55 L 65 24 M 50 55 L 75 35" stroke={p1Hand.isDetected ? '#168BFF' : '#303833'} strokeWidth="1.5" />
+                <path d="M 50 85 L 50 55 L 30 40 L 40 25 M 50 55 L 45 22 M 50 55 L 55 20 M 50 55 L 65 24 M 50 55 L 75 35" stroke={p1Ready ? '#168BFF' : '#303833'} strokeWidth="1.5" />
                 {/* Joints */}
                 {[
                   [50, 85], [50, 55], [30, 40], [40, 25],
                   [45, 22], [55, 20], [65, 24], [75, 35]
                 ].map(([cx, cy], i) => (
-                  <circle key={i} cx={cx} cy={cy} r={i === 0 ? 3.5 : 2.5} fill={p1Hand.isDetected ? '#168BFF' : '#303833'} />
+                  <circle key={i} cx={cx} cy={cy} r={i === 0 ? 3.5 : 2.5} fill={p1Ready ? '#168BFF' : '#303833'} />
                 ))}
               </svg>
             </div>
@@ -105,7 +135,7 @@ export const Calibration: React.FC<CalibrationProps> = ({
           <div className="md:col-span-8 flex flex-col items-center">
             <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-[#0B0E0D] border-2 border-[#303833]">
               <canvas
-                ref={previewCanvasRef}
+                ref={isBoxing ? boxingPreviewCanvasRef : previewCanvasRef}
                 width={640}
                 height={360}
                 className="w-full h-full object-cover"
@@ -125,30 +155,44 @@ export const Calibration: React.FC<CalibrationProps> = ({
 
               <div className="mb-4">
                 <span className="text-[11px] text-[#A6AAA2] block">Detection State:</span>
-                <span className={`text-sm font-semibold ${p2Hand.isDetected ? 'text-[#E65361]' : 'text-[#A6AAA2]'}`}>
-                  {p2Hand.isDetected ? 'Detected' : 'Searching...'}
+                <span className={`text-sm font-semibold ${p2Ready ? 'text-[#E65361]' : 'text-[#A6AAA2]'}`}>
+                  {p2Ready ? 'Detected' : isBoxing ? 'Find 3 inputs' : 'Searching...'}
                 </span>
               </div>
 
-              <div className="mb-4">
-                <span className="text-[11px] text-[#A6AAA2] block">Confidence:</span>
-                <span className="font-mono text-lg font-bold text-[#EAE7DE]">
-                  {p2Hand.isDetected ? `${Math.round(p2Hand.confidence * 100)}%` : '0%'}
-                </span>
-              </div>
+              {isBoxing && boxingTracking ? (
+                <div className="mb-4 grid grid-cols-1 gap-1 text-[10px] font-mono uppercase">
+                  {[
+                    ['Head', boxingTracking.p2.head.isDetected],
+                    ['Left wrist', boxingTracking.p2.leftHand.isDetected],
+                    ['Right wrist', boxingTracking.p2.rightHand.isDetected],
+                  ].map(([label, detected]) => (
+                    <span key={String(label)} className={detected ? 'text-[#E65361]' : 'text-[#A6AAA2]'}>
+                      {detected ? '●' : '○'} {label}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="mb-4">
+                  <span className="text-[11px] text-[#A6AAA2] block">Confidence:</span>
+                  <span className="font-mono text-lg font-bold text-[#EAE7DE]">
+                    {p2Hand.isDetected ? `${Math.round(p2Hand.confidence * 100)}%` : '0%'}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Small Red Hand-Landmark Illustration */}
             <div className="w-full aspect-[4/3] rounded bg-[#0B0E0D] border border-[#303833] p-2 flex items-center justify-center">
               <svg viewBox="0 0 100 100" className="w-20 h-20 select-none" fill="none">
                 {/* Palm bones */}
-                <path d="M 50 85 L 50 55 L 70 40 L 60 25 M 50 55 L 55 22 M 50 55 L 45 20 M 50 55 L 35 24 M 50 55 L 25 35" stroke={p2Hand.isDetected ? '#E65361' : '#303833'} strokeWidth="1.5" />
+                <path d="M 50 85 L 50 55 L 70 40 L 60 25 M 50 55 L 55 22 M 50 55 L 45 20 M 50 55 L 35 24 M 50 55 L 25 35" stroke={p2Ready ? '#E65361' : '#303833'} strokeWidth="1.5" />
                 {/* Joints */}
                 {[
                   [50, 85], [50, 55], [70, 40], [60, 25],
                   [55, 22], [45, 20], [35, 24], [25, 35]
                 ].map(([cx, cy], i) => (
-                  <circle key={i} cx={cx} cy={cy} r={i === 0 ? 3.5 : 2.5} fill={p2Hand.isDetected ? '#E65361' : '#303833'} />
+                  <circle key={i} cx={cx} cy={cy} r={i === 0 ? 3.5 : 2.5} fill={p2Ready ? '#E65361' : '#303833'} />
                 ))}
               </svg>
             </div>
@@ -157,6 +201,12 @@ export const Calibration: React.FC<CalibrationProps> = ({
 
         {/* Below Camera: Compact Green Confirmation Pill */}
         <div className="flex flex-col items-center gap-4">
+          {isBoxing && !boxingModelReady && !boxingTrackingError && (
+            <span className="text-xs text-[#A6AAA2]">Loading two-player pose tracking...</span>
+          )}
+          {boxingTrackingError && (
+            <span role="alert" className="max-w-xl text-xs text-[#E65361]">{boxingTrackingError}</span>
+          )}
           <div
             className={`inline-flex items-center gap-2 px-3.5 py-1 rounded-full border text-xs font-medium transition ${
               bothReady
@@ -165,7 +215,7 @@ export const Calibration: React.FC<CalibrationProps> = ({
             }`}
           >
             {bothReady && <Check size={13} className="text-[#65B987]" />}
-            <span>{bothReady ? 'Both Players Ready!' : 'Waiting for both players...'}</span>
+            <span>{bothReady ? (isBoxing ? 'All six inputs ready' : 'Both Players Ready!') : isBoxing ? 'Waiting for head and both wrists per player' : 'Waiting for both players...'}</span>
           </div>
 
           {/* Large Warm Off-White "START MATCH" Button */}
@@ -174,7 +224,8 @@ export const Calibration: React.FC<CalibrationProps> = ({
               audioManager.playButtonClick();
               onCalibrationComplete();
             }}
-            className="w-full max-w-sm py-4 rounded-md bg-[#D9CCB2] hover:bg-[#eae0cb] text-[#171916] text-sm font-bold tracking-[0.15em] uppercase transition shadow-sm hover:scale-[1.01] active:scale-[0.99]"
+            disabled={isBoxing && !bothReady}
+            className="w-full max-w-sm py-4 rounded-md bg-[#D9CCB2] hover:bg-[#eae0cb] disabled:cursor-not-allowed disabled:opacity-40 text-[#171916] text-sm font-bold tracking-[0.15em] uppercase transition shadow-sm hover:scale-[1.01] active:scale-[0.99]"
           >
             START MATCH
           </button>
@@ -182,7 +233,7 @@ export const Calibration: React.FC<CalibrationProps> = ({
       </main>
 
       <footer className="max-w-5xl w-full mx-auto text-center text-xs text-[#A6AAA2]">
-        Player 1 on the left (Blue) · Player 2 on the right (Red)
+        {isBoxing ? 'P1 on the left (Blue) · P2 on the right (Red)' : 'Player 1 on the left (Blue) · Player 2 on the right (Red)'}
       </footer>
     </div>
   );

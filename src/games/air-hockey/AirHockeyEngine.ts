@@ -98,6 +98,8 @@ export class AirHockeyEngine {
     p1Target: { x: number; y: number },
     p2Target: { x: number; y: number }
   ) {
+    p1Target = this.assistTarget('p1', p1Target);
+    p2Target = this.assistTarget('p2', p2Target);
     const tablePad = 14;
     // Constrain P1 to left half
     const p1MinX = tablePad + this.p1Paddle.radius;
@@ -116,6 +118,28 @@ export class AirHockeyEngine {
 
     this.p2Paddle.targetX = Math.max(p2MinX, Math.min(p2MaxX, p2Target.x * this.width));
     this.p2Paddle.targetY = Math.max(p2MinY, Math.min(p2MaxY, p2Target.y * this.height));
+  }
+
+  private assistTarget(player: PlayerId, target: { x: number; y: number }) {
+    const puck = this.puck;
+    const paddle = player === 'p1' ? this.p1Paddle : this.p2Paddle;
+    const approaching = player === 'p1' ? puck.vx < -60 : puck.vx > 60;
+    if (!approaching || puck.isGoalAnim) return target;
+
+    const timeToPaddle = (paddle.x - puck.x) / puck.vx;
+    if (timeToPaddle <= 0 || timeToPaddle > 0.85) return target;
+
+    const minY = puck.radius + 14;
+    const span = this.height - puck.radius * 2 - 28;
+    const period = span * 2;
+    const projectedY = puck.y + puck.vy * timeToPaddle - minY;
+    const reflectedY = ((projectedY % period) + period) % period;
+    const interceptY = minY + (reflectedY <= span ? reflectedY : period - reflectedY);
+
+    return {
+      x: target.x + (puck.x / this.width - target.x) * 0.03,
+      y: target.y + (interceptY / this.height - target.y) * 0.04,
+    };
   }
 
   // AI logic for Player 2
@@ -152,9 +176,9 @@ export class AirHockeyEngine {
       targetY = homeY + Math.sin(performance.now() * 0.002) * 35;
     }
 
-    const lerpSpeed = 12 * speedMultiplier * dt;
-    paddle.targetX += (targetX - paddle.targetX) * Math.min(1, lerpSpeed);
-    paddle.targetY += (targetY - paddle.targetY) * Math.min(1, lerpSpeed);
+    const response = 1 - Math.exp(-12 * speedMultiplier * dt);
+    paddle.targetX += (targetX - paddle.targetX) * response;
+    paddle.targetY += (targetY - paddle.targetY) * response;
   }
 
   public start() {
@@ -179,7 +203,7 @@ export class AirHockeyEngine {
     const dt = Math.min(0.05, Math.max(0.001, rawDt));
 
     // Keep physics steps small enough to avoid tunneling at lower frame rates.
-    const subSteps = Math.max(2, Math.ceil(dt * 120));
+    const subSteps = Math.max(1, Math.ceil(dt * 120));
     const subDt = dt / subSteps;
     for (let step = 0; step < subSteps; step++) {
       this.updatePhysics(subDt);
@@ -202,9 +226,9 @@ export class AirHockeyEngine {
       const prevX = paddle.x;
       const prevY = paddle.y;
 
-      const smooth = 0.28;
-      paddle.x += (paddle.targetX - paddle.x) * (1 - smooth);
-      paddle.y += (paddle.targetY - paddle.y) * (1 - smooth);
+      const smooth = 1 - Math.exp(-20 * dt);
+      paddle.x += (paddle.targetX - paddle.x) * smooth;
+      paddle.y += (paddle.targetY - paddle.y) * smooth;
 
       paddle.vx = (paddle.x - prevX) / dt;
       paddle.vy = (paddle.y - prevY) / dt;

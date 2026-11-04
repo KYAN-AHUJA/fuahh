@@ -137,17 +137,35 @@ export class TableTennisEngine {
     const minY = pad + this.p1Paddle.height / 2;
     const maxY = this.height - pad - this.p1Paddle.height / 2;
 
-    this.p1Paddle.targetY = Math.max(minY, Math.min(maxY, p1Y * this.height));
-    this.p2Paddle.targetY = Math.max(minY, Math.min(maxY, p2Y * this.height));
+    this.p1Paddle.targetY = Math.max(minY, Math.min(maxY, this.assistTargetY('p1', p1Y) * this.height));
+    this.p2Paddle.targetY = Math.max(minY, Math.min(maxY, this.assistTargetY('p2', p2Y) * this.height));
+  }
+
+  private assistTargetY(player: PlayerId, targetY: number) {
+    const ball = this.ball;
+    const paddle = player === 'p1' ? this.p1Paddle : this.p2Paddle;
+    const approaching = player === 'p1' ? ball.vx < -60 : ball.vx > 60;
+    if (!approaching || this.resetDelay > 0) return targetY;
+
+    const timeToPaddle = (paddle.x - ball.x) / ball.vx;
+    if (timeToPaddle <= 0 || timeToPaddle > 0.85) return targetY;
+
+    const minY = ball.radius + 14;
+    const span = this.height - minY * 2;
+    const period = span * 2;
+    const projectedY = ball.y + (ball.vy + ball.spin * 0.25) * timeToPaddle - minY;
+    const reflectedY = ((projectedY % period) + period) % period;
+    const interceptY = minY + (reflectedY <= span ? reflectedY : period - reflectedY);
+    return targetY + (interceptY / this.height - targetY) * 0.035;
   }
 
   public updateAI(difficulty: 'easy' | 'medium' | 'pro', dt: number) {
     const ball = this.ball;
     const paddle = this.p2Paddle;
 
-    const reactionFactor = difficulty === 'easy' ? 0.08 : difficulty === 'medium' ? 0.16 : 0.28;
+    const responseRate = difficulty === 'easy' ? 4.8 : difficulty === 'medium' ? 9.6 : 16.8;
     const dy = ball.y - paddle.y;
-    paddle.targetY += dy * reactionFactor;
+    paddle.targetY += dy * (1 - Math.exp(-responseRate * dt));
 
     if (difficulty === 'pro' && ball.x > this.width * 0.75 && ball.vx > 0 && Math.random() < 0.02) {
       this.triggerSmash('p2');
@@ -176,7 +194,7 @@ export class TableTennisEngine {
     const dt = Math.min(0.05, Math.max(0.001, rawDt));
 
     // Keep physics steps small enough to avoid tunneling at lower frame rates.
-    const subSteps = Math.max(2, Math.ceil(dt * 120));
+    const subSteps = Math.max(1, Math.ceil(dt * 120));
     const subDt = dt / subSteps;
     for (let step = 0; step < subSteps; step++) {
       this.updatePhysics(subDt);
@@ -198,7 +216,7 @@ export class TableTennisEngine {
     // 1. Update Paddles
     [this.p1Paddle, this.p2Paddle].forEach(paddle => {
       const prevY = paddle.y;
-      paddle.y += (paddle.targetY - paddle.y) * 0.35;
+      paddle.y += (paddle.targetY - paddle.y) * (1 - Math.exp(-22 * dt));
       paddle.vy = (paddle.y - prevY) / dt;
     });
 

@@ -37,9 +37,6 @@ export function useHandTracking({
   videoElement,
   isEnabled,
   smoothingFactor = 0.15,
-  p1ColorTarget = { r: 22, g: 139, b: 255, hex: '#168BFF' },
-  p2ColorTarget = { r: 230, g: 83, b: 97, hex: '#E65361' },
-  colorTolerance = 120,
   onHandsUpdate,
 }: UseHandTrackingProps) {
   const [p1Hand, setP1Hand] = useState<HandData>({ ...DEFAULT_HAND, x: 0.22 });
@@ -48,35 +45,42 @@ export function useHandTracking({
   const [detectionError, setDetectionError] = useState<string | null>(null);
   const [trackingFps, setTrackingFps] = useState<number>(60);
   const [handsDetectedCount, setHandsDetectedCount] = useState<number>(0);
+  const handTrackingRef = useRef({
+    p1: { ...DEFAULT_HAND, x: 0.22 },
+    p2: { ...DEFAULT_HAND, x: 0.78 },
+  });
 
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const handsInstanceRef = useRef<any>(null);
   const animationFrameIdRef = useRef<number | null>(null);
   const videoFrameCallbackIdRef = useRef<number | null>(null);
   const isProcessingRef = useRef(false);
+  const lastInferenceTimeRef = useRef(0);
+  const lastUiUpdateTimeRef = useRef(0);
+  const lastFpsUpdateTimeRef = useRef(0);
+  const lastReadinessRef = useRef('00');
+  const handsDetectedCountRef = useRef(0);
+  const lastPreviewTimeRef = useRef(0);
 
   // Stable tracking references
   const prevP1Ref = useRef<HandData>({ ...DEFAULT_HAND, x: 0.22 });
   const prevP2Ref = useRef<HandData>({ ...DEFAULT_HAND, x: 0.78 });
-  const rawP1PositionRef = useRef({ x: 0.22, y: 0.5 });
-  const rawP2PositionRef = useRef({ x: 0.78, y: 0.5 });
-  const p1VelocityFilterRef = useRef({ x: 0, y: 0 });
-  const p2VelocityFilterRef = useRef({ x: 0, y: 0 });
   const lastProcessedTimeRef = useRef(performance.now());
 
   // FPS calculation
   const frameTimesRef = useRef<number[]>([]);
 
-  // Setup offscreen canvas for color sampling
-  useEffect(() => {
-    if (typeof document !== 'undefined' && !offscreenCanvasRef.current) {
-      const c = document.createElement('canvas');
-      c.width = 32;
-      c.height = 32;
-      offscreenCanvasRef.current = c;
+  const publishHands = (p1: HandData, p2: HandData, now: number) => {
+    const currentHands = { p1, p2 };
+    handTrackingRef.current = currentHands;
+    const readiness = `${Number(p1.isDetected)}${Number(p2.isDetected)}`;
+    if (readiness !== lastReadinessRef.current || now - lastUiUpdateTimeRef.current >= 50) {
+      lastReadinessRef.current = readiness;
+      lastUiUpdateTimeRef.current = now;
+      setP1Hand(p1);
+      setP2Hand(p2);
     }
-  }, []);
+  };
 
   // Initialize MediaPipe Hands
   useEffect(() => {
@@ -138,50 +142,6 @@ export function useHandTracking({
     };
   }, [isEnabled]);
 
-  // Color distance helper
-  const colorDist = (c1: { r: number; g: number; b: number }, c2: { r: number; g: number; b: number }) => {
-    return Math.hypot(c1.r - c2.r, c1.g - c2.g, c1.b - c2.b);
-  };
-
-  // Sample wrist color
-  const sampleColor = useCallback((
-    video: HTMLVideoElement,
-    landmarks: any[],
-  ) => {
-    if (!offscreenCanvasRef.current || !video || video.readyState < 2) {
-      return { r: 128, g: 128, b: 128, hex: '#808080' };
-    }
-
-    try {
-      const ctx = offscreenCanvasRef.current.getContext('2d', { willReadFrequently: true });
-      if (!ctx) return { r: 128, g: 128, b: 128, hex: '#808080' };
-
-      const vw = video.videoWidth || 640;
-      const vh = video.videoHeight || 480;
-      const wrist = landmarks[0];
-      const cropSize = 28;
-      const sx = Math.max(0, Math.min(vw - cropSize, Math.floor(wrist.x * vw - cropSize / 2)));
-      const sy = Math.max(0, Math.min(vh - cropSize, Math.floor(wrist.y * vh - cropSize / 2)));
-
-      ctx.drawImage(video, sx, sy, cropSize, cropSize, 0, 0, 32, 32);
-      const imgData = ctx.getImageData(0, 0, 32, 32);
-      let r = 0, g = 0, b = 0, count = 0;
-      for (let i = 0; i < imgData.data.length; i += 4) {
-        r += imgData.data[i];
-        g += imgData.data[i + 1];
-        b += imgData.data[i + 2];
-        count++;
-      }
-      const avgR = Math.round(r / count);
-      const avgG = Math.round(g / count);
-      const avgB = Math.round(b / count);
-      const hex = `#${((1 << 24) + (avgR << 16) + (avgG << 8) + avgB).toString(16).slice(1)}`;
-      return { r: avgR, g: avgG, b: avgB, hex };
-    } catch {
-      return { r: 128, g: 128, b: 128, hex: '#808080' };
-    }
-  }, []);
-
   // Gesture analysis: detect fist or pinch
   const analyzeGesture = (landmarks: { x: number; y: number; z: number }[]) => {
     if (!landmarks || landmarks.length < 21) {
@@ -212,19 +172,23 @@ export function useHandTracking({
     // Rolling FPS update
     frameTimesRef.current.push(now);
     if (frameTimesRef.current.length > 20) frameTimesRef.current.shift();
-    if (frameTimesRef.current.length > 2) {
+    if (frameTimesRef.current.length > 2 && now - lastFpsUpdateTimeRef.current >= 500) {
       const duration = (frameTimesRef.current[frameTimesRef.current.length - 1] - frameTimesRef.current[0]) / 1000;
       if (duration > 0) {
         setTrackingFps(Math.round((frameTimesRef.current.length - 1) / duration));
+        lastFpsUpdateTimeRef.current = now;
       }
     }
 
     const multiHandLandmarks: any[] = results.multiHandLandmarks || [];
     const multiHandedness: any[] = results.multiHandedness || [];
-    setHandsDetectedCount(multiHandLandmarks.length);
+    if (handsDetectedCountRef.current !== multiHandLandmarks.length) {
+      handsDetectedCountRef.current = multiHandLandmarks.length;
+      setHandsDetectedCount(multiHandLandmarks.length);
+    }
 
-    let nextP1: HandData = { ...prevP1Ref.current, isDetected: false };
-    let nextP2: HandData = { ...prevP2Ref.current, isDetected: false };
+    let nextP1: HandData = { ...prevP1Ref.current, isDetected: false, isFist: false, isPinching: false };
+    let nextP2: HandData = { ...prevP2Ref.current, isDetected: false, isFist: false, isPinching: false };
 
     if (multiHandLandmarks.length === 0) {
       nextP1.vx *= 0.6;
@@ -233,8 +197,7 @@ export function useHandTracking({
       nextP2.vy *= 0.6;
       prevP1Ref.current = nextP1;
       prevP2Ref.current = nextP2;
-      setP1Hand(nextP1);
-      setP2Hand(nextP2);
+      publishHands(nextP1, nextP2, now);
       onHandsUpdate?.(nextP1, nextP2);
       drawPreview(results, []);
       return;
@@ -249,7 +212,6 @@ export function useHandTracking({
       const rawY = indexTip.y * 0.65 + palmCenter.y * 0.35;
       const confidence = multiHandedness[idx]?.score || 0.85;
       const { isFist, isPinching } = analyzeGesture(lms);
-      const sampledColor = videoElement ? sampleColor(videoElement, lms) : { r: 128, g: 128, b: 128, hex: '#808080' };
 
       return {
         x: rawX,
@@ -258,7 +220,6 @@ export function useHandTracking({
         rawLandmarks: lms,
         isFist,
         isPinching,
-        sampledColor,
         assignedPlayer: null as 'p1' | 'p2' | null,
       };
     });
@@ -289,8 +250,6 @@ export function useHandTracking({
     const toHandData = (
       candidate: typeof candidates[number],
       previous: HandData,
-      previousRaw: { x: number; y: number },
-      filteredVelocity: { x: number; y: number },
       assignedColor: string
     ): HandData => {
       // Responsive smoothing filter
@@ -300,11 +259,6 @@ export function useHandTracking({
 
       const vx = (smoothX - previous.x) / dt;
       const vy = (smoothY - previous.y) / dt;
-
-      previousRaw.x = candidate.x;
-      previousRaw.y = candidate.y;
-      filteredVelocity.x = vx;
-      filteredVelocity.y = vy;
 
       return {
         isDetected: true,
@@ -326,16 +280,15 @@ export function useHandTracking({
     const p2Candidate = candidates.find(c => c.assignedPlayer === 'p2');
 
     if (p1Candidate) {
-      nextP1 = toHandData(p1Candidate, prevP1Ref.current, rawP1PositionRef.current, p1VelocityFilterRef.current, '#168BFF');
+      nextP1 = toHandData(p1Candidate, prevP1Ref.current, '#168BFF');
     }
     if (p2Candidate) {
-      nextP2 = toHandData(p2Candidate, prevP2Ref.current, rawP2PositionRef.current, p2VelocityFilterRef.current, '#E65361');
+      nextP2 = toHandData(p2Candidate, prevP2Ref.current, '#E65361');
     }
 
     prevP1Ref.current = nextP1;
     prevP2Ref.current = nextP2;
-    setP1Hand(nextP1);
-    setP2Hand(nextP2);
+    publishHands(nextP1, nextP2, now);
     onHandsUpdate?.(nextP1, nextP2);
 
     drawPreview(results, candidates);
@@ -343,6 +296,10 @@ export function useHandTracking({
 
   // Draw flat 2D skeleton & landmarks onto preview canvas
   const drawPreview = (results: any, candidates: any[]) => {
+    const now = performance.now();
+    if (now - lastPreviewTimeRef.current < 66) return;
+    lastPreviewTimeRef.current = now;
+
     const canvas = previewCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -430,9 +387,11 @@ export function useHandTracking({
     if (
       videoElement.readyState >= 2 &&
       !videoElement.paused &&
-      !isProcessingRef.current
+      !isProcessingRef.current &&
+      performance.now() - lastInferenceTimeRef.current >= 1000 / 30
     ) {
       isProcessingRef.current = true;
+      lastInferenceTimeRef.current = performance.now();
       try {
         await handsInstanceRef.current.send({ image: videoElement });
       } catch {
@@ -484,6 +443,7 @@ export function useHandTracking({
     previewCanvasRef,
     trackingFps,
     handsDetectedCount,
+    handTrackingRef,
     isTrackingBoth: p1Hand.isDetected && p2Hand.isDetected,
   };
 }

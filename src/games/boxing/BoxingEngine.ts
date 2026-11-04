@@ -44,6 +44,7 @@ export class BoxingEngine {
   private lastTime: number = 0;
   private animationId: number | null = null;
   private isRunning: boolean = false;
+  private roundFinalized: boolean = false;
 
   public onRoundEnd?: (winner: PlayerId, p1Wins: number, p2Wins: number) => void;
   public onMatchEnd?: (winner: PlayerId) => void;
@@ -71,6 +72,7 @@ export class BoxingEngine {
   }
 
   public startRound(roundNum: number = 1) {
+    this.roundFinalized = false;
     this.currentRound = roundNum;
     this.roundTimer = 60;
     this.roundState = 'intro';
@@ -471,6 +473,10 @@ export class BoxingEngine {
   }
 
   private finishRound() {
+    if (this.roundFinalized) return;
+    this.roundFinalized = true;
+    this.roundState = 'round-over';
+
     if (this.winner === 'p1') this.p1.roundsWon++;
     if (this.winner === 'p2') this.p2.roundsWon++;
 

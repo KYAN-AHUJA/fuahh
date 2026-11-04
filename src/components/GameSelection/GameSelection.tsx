@@ -30,7 +30,7 @@ export const GameSelection: React.FC<GameSelectionProps> = ({ onSelectGame, onBa
       </header>
 
       {/* Main Selection Area */}
-      <main className="max-w-4xl w-full mx-auto my-auto py-10">
+      <main className="max-w-6xl w-full mx-auto my-auto py-10">
         <div className="text-center mb-10">
           <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-[#EAE7DE] uppercase mb-2">
             SELECT GAME MODE
@@ -40,12 +40,12 @@ export const GameSelection: React.FC<GameSelectionProps> = ({ onSelectGame, onBa
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
           {/* Card 1: Air Hockey */}
-          <div className="flex flex-col justify-between p-7 rounded-xl bg-[#121715] border border-[#303833] hover:border-[#168BFF]/70 transition duration-200">
+          <div className="flex flex-col justify-between p-6 rounded-lg bg-[#121715] border border-[#303833] hover:border-[#168BFF]/70 transition duration-200">
             <div>
               {/* Flat 2D Top-Down Arena Illustration */}
-              <div className="w-full aspect-[16/10] rounded-lg bg-[#0B0E0D] border border-[#303833] mb-6 p-4 flex items-center justify-center">
+              <div className="w-full aspect-[16/10] rounded-md bg-[#0B0E0D] border border-[#303833] mb-5 p-4 flex items-center justify-center">
                 <svg viewBox="0 0 240 140" className="w-full h-full select-none" fill="none">
                   {/* Rounded table body */}
                   <rect x="10" y="10" width="220" height="120" rx="14" fill="#171D1A" stroke="#303833" strokeWidth="1.5" />
@@ -91,10 +91,10 @@ export const GameSelection: React.FC<GameSelectionProps> = ({ onSelectGame, onBa
           </div>
 
           {/* Card 2: Arcade Table Tennis */}
-          <div className="flex flex-col justify-between p-7 rounded-xl bg-[#121715] border border-[#303833] hover:border-[#E65361]/70 transition duration-200">
+          <div className="flex flex-col justify-between p-6 rounded-lg bg-[#121715] border border-[#303833] hover:border-[#E65361]/70 transition duration-200">
             <div>
               {/* Flat 2D Top-Down Arena Illustration */}
-              <div className="w-full aspect-[16/10] rounded-lg bg-[#0B0E0D] border border-[#303833] mb-6 p-4 flex items-center justify-center">
+              <div className="w-full aspect-[16/10] rounded-md bg-[#0B0E0D] border border-[#303833] mb-5 p-4 flex items-center justify-center">
                 <svg viewBox="0 0 240 140" className="w-full h-full select-none" fill="none">
                   {/* Rectangular table body */}
                   <rect x="10" y="10" width="220" height="120" fill="#171D1A" stroke="#303833" strokeWidth="1.5" />
@@ -134,11 +134,49 @@ export const GameSelection: React.FC<GameSelectionProps> = ({ onSelectGame, onBa
               PLAY TABLE TENNIS
             </button>
           </div>
+
+          {/* Card 3: Neon Boxing */}
+          <div className="flex flex-col justify-between p-6 rounded-lg bg-[#121715] border border-[#303833] hover:border-[#D9CCB2]/70 transition duration-200">
+            <div>
+              <div className="w-full aspect-[16/10] rounded-md bg-[#0B0E0D] border border-[#303833] mb-5 p-4 flex items-center justify-center">
+                <svg viewBox="0 0 240 140" className="w-full h-full select-none" fill="none" aria-hidden="true">
+                  <path d="M16 82 44 28h152l28 54-28 38H44L16 82Z" fill="#121715" stroke="#303833" strokeWidth="2" />
+                  <path d="M30 82h180M42 54h156M42 108h156" stroke="#303833" strokeWidth="2" />
+                  <path d="M120 32v92" stroke="#A6AAA2" strokeOpacity=".45" strokeDasharray="4 5" />
+                  <circle cx="83" cy="54" r="11" fill="#202723" stroke="#168BFF" strokeWidth="4" />
+                  <path d="M83 68v24m0-14L67 90m16-12 16 9m-16 5-11 20m11-20 12 20" stroke="#168BFF" strokeWidth="7" strokeLinecap="round" />
+                  <circle cx="157" cy="54" r="11" fill="#202723" stroke="#E65361" strokeWidth="4" />
+                  <path d="M157 68v24m0-14 16 9m-16-9-16 9m16 5 11 20m-11-20-12 20" stroke="#E65361" strokeWidth="7" strokeLinecap="round" />
+                  <circle cx="111" cy="72" r="5" fill="#D9CCB2" />
+                  <circle cx="129" cy="72" r="5" fill="#D9CCB2" />
+                </svg>
+              </div>
+
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2 h-2 rounded-full bg-[#D9CCB2]" />
+                <h3 className="text-lg font-bold text-[#EAE7DE] uppercase tracking-wide">NEON BOXING</h3>
+              </div>
+
+              <p className="text-xs text-[#A6AAA2] leading-relaxed mb-6">
+                Read head movement and both wrists for each player. Duck, sway, guard, and punch in a best-of-three ring match.
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                audioManager.playButtonClick();
+                onSelectGame('boxing');
+              }}
+              className="w-full py-3 rounded-md bg-[#D9CCB2] hover:bg-[#eae0cb] text-[#171916] text-xs font-bold tracking-wider uppercase transition"
+            >
+              ENTER THE RING
+            </button>
+          </div>
         </div>
       </main>
 
       <footer className="max-w-5xl w-full mx-auto text-center text-xs text-[#A6AAA2]">
-        Both game modes support camera gesture tracking, local keyboard, or AI play.
+        All three games support camera input, local keyboard, or solo play against AI.
       </footer>
     </div>
   );
