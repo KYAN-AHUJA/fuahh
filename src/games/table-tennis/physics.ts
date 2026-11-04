@@ -41,7 +41,7 @@ export const TABLE_TENNIS_CONFIG: TableTennisConfig = {
   paddleWidth: 14,
   paddleHeight: 90,
   ballRadius: 9,
-  initialSpeed: 380, // px/s
+  initialSpeed: 420, // px/s
   speedIncrementPerHit: 28,
   maxSpeed: 1050,
   spinFactor: 160,
