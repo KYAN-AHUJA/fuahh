@@ -137,8 +137,8 @@ export class AirHockeyEngine {
     const interceptY = minY + (reflectedY <= span ? reflectedY : period - reflectedY);
 
     return {
-      x: target.x + (puck.x / this.width - target.x) * 0.03,
-      y: target.y + (interceptY / this.height - target.y) * 0.04,
+      x: target.x + (puck.x / this.width - target.x) * 0.01,
+      y: target.y + (interceptY / this.height - target.y) * 0.01,
     };
   }
 
@@ -226,7 +226,7 @@ export class AirHockeyEngine {
       const prevX = paddle.x;
       const prevY = paddle.y;
 
-      const smooth = 1 - Math.exp(-20 * dt);
+      const smooth = 1 - Math.exp(-40 * dt);
       paddle.x += (paddle.targetX - paddle.x) * smooth;
       paddle.y += (paddle.targetY - paddle.y) * smooth;
 

@@ -156,7 +156,7 @@ export class TableTennisEngine {
     const projectedY = ball.y + (ball.vy + ball.spin * 0.25) * timeToPaddle - minY;
     const reflectedY = ((projectedY % period) + period) % period;
     const interceptY = minY + (reflectedY <= span ? reflectedY : period - reflectedY);
-    return targetY + (interceptY / this.height - targetY) * 0.035;
+    return targetY + (interceptY / this.height - targetY) * 0.01;
   }
 
   public updateAI(difficulty: 'easy' | 'medium' | 'pro', dt: number) {
@@ -216,7 +216,7 @@ export class TableTennisEngine {
     // 1. Update Paddles
     [this.p1Paddle, this.p2Paddle].forEach(paddle => {
       const prevY = paddle.y;
-      paddle.y += (paddle.targetY - paddle.y) * (1 - Math.exp(-22 * dt));
+      paddle.y += (paddle.targetY - paddle.y) * (1 - Math.exp(-45 * dt));
       paddle.vy = (paddle.y - prevY) / dt;
     });
 

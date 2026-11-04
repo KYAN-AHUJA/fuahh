@@ -19,7 +19,7 @@ export const HandTrackingPreview: React.FC<HandTrackingPreviewProps> = ({
   p2Hand,
   isModelReady,
   cameraStatus = 'active',
-  trackingFps = 60,
+  trackingFps = 0,
   handsDetectedCount,
   onClose,
 }) => {

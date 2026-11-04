@@ -1,12 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { HandData, ColorTarget } from '../types';
-
-declare global {
-  interface Window {
-    Hands?: any;
-    Camera?: any;
-  }
-}
+import type { HumanWorkerResponse } from '../workers/humanTracking.types';
 
 const DEFAULT_HAND: HandData = {
   isDetected: false,
@@ -36,14 +30,14 @@ interface UseHandTrackingProps {
 export function useHandTracking({
   videoElement,
   isEnabled,
-  smoothingFactor = 0.15,
+  smoothingFactor = 0.05,
   onHandsUpdate,
 }: UseHandTrackingProps) {
   const [p1Hand, setP1Hand] = useState<HandData>({ ...DEFAULT_HAND, x: 0.22 });
   const [p2Hand, setP2Hand] = useState<HandData>({ ...DEFAULT_HAND, x: 0.78 });
   const [isModelReady, setIsModelReady] = useState(false);
   const [detectionError, setDetectionError] = useState<string | null>(null);
-  const [trackingFps, setTrackingFps] = useState<number>(60);
+  const [trackingFps, setTrackingFps] = useState<number>(0);
   const [handsDetectedCount, setHandsDetectedCount] = useState<number>(0);
   const handTrackingRef = useRef({
     p1: { ...DEFAULT_HAND, x: 0.22 },
@@ -51,11 +45,11 @@ export function useHandTracking({
   });
 
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const handsInstanceRef = useRef<any>(null);
+  const humanWorkerRef = useRef<Worker | null>(null);
+  const nextRequestIdRef = useRef(0);
   const animationFrameIdRef = useRef<number | null>(null);
   const videoFrameCallbackIdRef = useRef<number | null>(null);
   const isProcessingRef = useRef(false);
-  const lastInferenceTimeRef = useRef(0);
   const lastUiUpdateTimeRef = useRef(0);
   const lastFpsUpdateTimeRef = useRef(0);
   const lastReadinessRef = useRef('00');
@@ -82,65 +76,54 @@ export function useHandTracking({
     }
   };
 
-  // Initialize MediaPipe Hands
   useEffect(() => {
-    if (!isEnabled) return;
+    if (!isEnabled) {
+      setIsModelReady(false);
+      return;
+    }
 
     let isMounted = true;
-    let attempts = 0;
-
-    const initMediaPipe = () => {
-      if (typeof window === 'undefined') return;
-
-      if (!window.Hands) {
-        if (attempts < 30) {
-          attempts++;
-          setTimeout(initMediaPipe, 200);
-        } else {
-          setDetectionError('MediaPipe Hands library could not be loaded.');
-        }
-        return;
-      }
-
-      try {
-        const hands = new window.Hands({
-          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-        });
-
-        hands.setOptions({
-          maxNumHands: 2,
-          modelComplexity: 0,
-          minDetectionConfidence: 0.45,
-          minTrackingConfidence: 0.4,
-        });
-
-        hands.onResults((results: any) => {
-          if (!isMounted) return;
-          processResults(results);
-        });
-
-        handsInstanceRef.current = hands;
+    setDetectionError(null);
+    const worker = new Worker(new URL('../workers/humanTracking.worker.ts', import.meta.url), { type: 'module' });
+    humanWorkerRef.current = worker;
+    worker.onmessage = (event: MessageEvent<HumanWorkerResponse>) => {
+      if (!isMounted) return;
+      const message = event.data;
+      if (message.type === 'ready') {
         setIsModelReady(true);
-      } catch (err: any) {
-        console.error('[HandTracking] Failed to initialize Hands:', err);
-        setDetectionError('Failed to initialize hand detection model.');
+      } else if (message.type === 'error') {
+        if (message.id !== undefined) isProcessingRef.current = false;
+        setDetectionError(`Hand Landmarker initialization failed: ${message.message}`);
+      } else {
+        isProcessingRef.current = false;
+        const frame = message.frames[0];
+        if (!frame) return;
+        const width = frame.width || 1;
+        const height = frame.height || 1;
+        processResults({
+          image: videoElement,
+          multiHandLandmarks: frame.hands.map((hand) => hand.keypoints.map(([x, y, z = 0]) => ({
+            x: x / width,
+            y: y / height,
+            z,
+          }))),
+          multiHandedness: frame.hands.map((hand) => ({ score: hand.score })),
+        });
       }
     };
-
-    initMediaPipe();
+    worker.onerror = (event) => {
+      isProcessingRef.current = false;
+      if (isMounted) setDetectionError(`Hand Landmarker worker failed: ${event.message}`);
+    };
+    worker.postMessage({ type: 'initialize', mode: 'hands' });
 
     return () => {
       isMounted = false;
-      if (handsInstanceRef.current) {
-        try {
-          handsInstanceRef.current.close();
-        } catch {
-          // ignore
-        }
-        handsInstanceRef.current = null;
-      }
+      if (humanWorkerRef.current === worker) humanWorkerRef.current = null;
+      worker.terminate();
+      isProcessingRef.current = false;
     };
-  }, [isEnabled]);
+  }, [isEnabled, videoElement]);
 
   // Gesture analysis: detect fist or pinch
   const analyzeGesture = (landmarks: { x: number; y: number; z: number }[]) => {
@@ -163,7 +146,7 @@ export function useHandTracking({
     return { isFist, isPinching };
   };
 
-  // Process MediaPipe results
+  // Process normalized Human.js landmarks using the existing game data contract.
   const processResults = (results: any) => {
     const now = performance.now();
     const dt = Math.max(0.001, (now - lastProcessedTimeRef.current) / 1000);
@@ -380,23 +363,26 @@ export function useHandTracking({
 
   // Video frame scheduler
   const sendVideoFrame = useCallback(async () => {
-    if (!isEnabled || !handsInstanceRef.current || !videoElement) {
+    if (!isEnabled || !humanWorkerRef.current || !videoElement) {
       return;
     }
 
     if (
       videoElement.readyState >= 2 &&
       !videoElement.paused &&
-      !isProcessingRef.current &&
-      performance.now() - lastInferenceTimeRef.current >= 1000 / 30
+      !isProcessingRef.current
     ) {
       isProcessingRef.current = true;
-      lastInferenceTimeRef.current = performance.now();
       try {
-        await handsInstanceRef.current.send({ image: videoElement });
+        const bitmap = await createImageBitmap(videoElement);
+        const worker = humanWorkerRef.current;
+        if (!worker) {
+          bitmap.close();
+          isProcessingRef.current = false;
+          return;
+        }
+        worker.postMessage({ type: 'detect', id: ++nextRequestIdRef.current, image: bitmap }, [bitmap]);
       } catch {
-        // drop frame gracefully
-      } finally {
         isProcessingRef.current = false;
       }
     }

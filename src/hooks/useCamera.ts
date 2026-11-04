@@ -68,9 +68,9 @@ export function useCamera() {
       const constraints: MediaStreamConstraints = {
         audio: false,
         video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          frameRate: { ideal: 60 },
+          width: { ideal: 640, max: 640 },
+          height: { ideal: 480, max: 480 },
+          frameRate: { ideal: 30, max: 60 },
           facingMode: 'user',
           deviceId: deviceIdToUse ? { exact: deviceIdToUse } : undefined,
         },

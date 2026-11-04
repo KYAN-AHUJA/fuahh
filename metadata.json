@@ -1,6 +1,6 @@
 {
   "name": "NEON ARENA",
-  "description": "Gesture-controlled webcam neon arcade featuring Air Hockey, Table Tennis, and 2D Tekken Boxing with MediaPipe tracking.",
+  "description": "Gesture-controlled webcam neon arcade featuring Air Hockey, Table Tennis, and 2D Tekken Boxing with Human.js tracking.",
   "permissions": [],
   "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

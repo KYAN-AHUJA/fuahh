@@ -1,10 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-
-declare global {
-  interface Window {
-    Pose?: any;
-  }
-}
+import type { HumanWorkerFrame, HumanWorkerResponse } from '../workers/humanTracking.types';
 
 export interface BoxingPoint {
   isDetected: boolean;
@@ -45,6 +40,8 @@ export function useBoxingTracking({ videoElement, isEnabled }: UseBoxingTracking
   const [isModelReady, setIsModelReady] = useState(false);
   const [trackingError, setTrackingError] = useState<string | null>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  const humanWorkerRef = useRef<Worker | null>(null);
+  const nextRequestIdRef = useRef(0);
 
   useEffect(() => {
     if (!isEnabled || !videoElement) {
@@ -56,51 +53,57 @@ export function useBoxingTracking({ videoElement, isEnabled }: UseBoxingTracking
 
     let active = true;
     let processing = false;
-    let retryCount = 0;
     let lastInferenceTime = 0;
     let lastPublishedTime = 0;
     let lastReadiness = '';
     let animationFrameId: number | null = null;
     let videoFrameCallbackId: number | null = null;
-    let p1Pose: any = null;
-    let p2Pose: any = null;
-    const p1Canvas = document.createElement('canvas');
-    const p2Canvas = document.createElement('canvas');
-    const p1Context = p1Canvas.getContext('2d');
-    const p2Context = p2Canvas.getContext('2d');
     const latestPlayers: BoxingTrackingState = {
       p1: { ...EMPTY_PLAYER },
       p2: { ...EMPTY_PLAYER },
     };
 
-    const pointFromLandmark = (landmark: any, sourceX: number): BoxingPoint => {
-      const confidence = landmark?.visibility ?? 0;
+    const pointFromKeypoint = (landmark: HumanWorkerFrame['bodies'][number]['keypoints'][number] | undefined, sourceX: number): BoxingPoint => {
+      const confidence = landmark?.score ?? 0;
       return {
         isDetected: confidence >= 0.35,
-        x: 1 - (sourceX + (landmark?.x ?? 0) * 0.5),
-        y: landmark?.y ?? 0,
+        x: 1 - (sourceX + (landmark?.positionRaw[0] ?? 0) * 0.5),
+        y: landmark?.positionRaw[1] ?? 0,
         confidence,
       };
     };
 
-    const updatePlayer = (playerId: 'p1' | 'p2', results: any) => {
-      if (!active) return;
-      const landmarks = results.poseLandmarks;
-      const sourceX = playerId === 'p1' ? 0.5 : 0;
-      const player = landmarks?.length >= 17
-        ? {
-            head: pointFromLandmark(landmarks[0], sourceX),
-            body: pointFromLandmark({
-              x: (landmarks[11].x + landmarks[12].x) / 2,
-              y: (landmarks[11].y + landmarks[12].y) / 2,
-              visibility: Math.min(landmarks[11].visibility ?? 0, landmarks[12].visibility ?? 0),
-            }, sourceX),
-            leftHand: pointFromLandmark(landmarks[15], sourceX),
-            rightHand: pointFromLandmark(landmarks[16], sourceX),
-          }
-        : { ...EMPTY_PLAYER };
+    const playerFromResult = (frame: HumanWorkerFrame | undefined, sourceX: number): BoxingPlayerTracking => {
+      const body = frame?.bodies[0];
+      if (!body) return { ...EMPTY_PLAYER };
 
-      latestPlayers[playerId] = player;
+      const findKeypoint = (part: string) => body.keypoints.find((keypoint) => keypoint.part === part);
+      const head = findKeypoint('nose') ?? findKeypoint('head') ?? findKeypoint('neck');
+      const leftShoulder = findKeypoint('leftShoulder');
+      const rightShoulder = findKeypoint('rightShoulder');
+      const bodyCenter = leftShoulder && rightShoulder
+        ? pointFromKeypoint({
+            part: 'bodyCenter',
+            positionRaw: [
+              (leftShoulder.positionRaw[0] + rightShoulder.positionRaw[0]) / 2,
+              (leftShoulder.positionRaw[1] + rightShoulder.positionRaw[1]) / 2,
+            ],
+            score: Math.min(leftShoulder.score, rightShoulder.score),
+          }, sourceX)
+        : { ...EMPTY_POINT };
+
+      return {
+        head: pointFromKeypoint(head, sourceX),
+        body: bodyCenter,
+        leftHand: pointFromKeypoint(findKeypoint('leftWrist'), sourceX),
+        rightHand: pointFromKeypoint(findKeypoint('rightWrist'), sourceX),
+      };
+    };
+
+    const updatePlayers = (p1: BoxingPlayerTracking, p2: BoxingPlayerTracking) => {
+      if (!active) return;
+      latestPlayers.p1 = p1;
+      latestPlayers.p2 = p2;
       const currentPlayers = { p1: { ...latestPlayers.p1 }, p2: { ...latestPlayers.p2 } };
       playersRef.current = currentPlayers;
 
@@ -113,7 +116,7 @@ export function useBoxingTracking({ videoElement, isEnabled }: UseBoxingTracking
         currentPlayers.p2.rightHand.isDetected,
       ].map(Number).join('');
       const now = performance.now();
-      if (readiness !== lastReadiness || now - lastPublishedTime >= 100) {
+      if (readiness !== lastReadiness || now - lastPublishedTime >= 50) {
         lastReadiness = readiness;
         lastPublishedTime = now;
         setPlayers(currentPlayers);
@@ -182,76 +185,57 @@ export function useBoxingTracking({ videoElement, isEnabled }: UseBoxingTracking
     };
 
     const processFrame = async () => {
-      if (!active || !p1Pose || !p2Pose || !p1Context || !p2Context) return;
+      if (!active || !humanWorkerRef.current) return;
       const now = performance.now();
-      if (videoElement.readyState >= 2 && !videoElement.paused && !processing && now - lastInferenceTime >= 50) {
+      if (videoElement.readyState >= 2 && !videoElement.paused && !processing && now - lastInferenceTime >= 1000 / 30) {
         processing = true;
         lastInferenceTime = now;
         try {
-          const halfWidth = Math.floor(videoElement.videoWidth / 2);
-          const videoHeight = videoElement.videoHeight;
-          if (halfWidth > 0 && videoHeight > 0) {
-            p1Canvas.width = halfWidth;
-            p1Canvas.height = videoHeight;
-            p2Canvas.width = halfWidth;
-            p2Canvas.height = videoHeight;
-            p1Context.drawImage(videoElement, halfWidth, 0, halfWidth, videoHeight, 0, 0, halfWidth, videoHeight);
-            p2Context.drawImage(videoElement, 0, 0, halfWidth, videoHeight, 0, 0, halfWidth, videoHeight);
-            await Promise.all([
-              p1Pose.send({ image: p1Canvas }),
-              p2Pose.send({ image: p2Canvas }),
-            ]);
-            drawPreview();
+          const bitmap = await createImageBitmap(videoElement);
+          const worker = humanWorkerRef.current;
+          if (!worker || !active) {
+            bitmap.close();
+            processing = false;
+          } else {
+            worker.postMessage({ type: 'detect', id: ++nextRequestIdRef.current, image: bitmap }, [bitmap]);
           }
         } catch {
+          processing = false;
           if (active) setTrackingError('Pose tracking stopped responding. Check the camera and try again.');
         } finally {
-          processing = false;
         }
       }
-      scheduleFrame();
+      if (active) scheduleFrame();
     };
 
-    const initialize = () => {
+    setTrackingError(null);
+    const worker = new Worker(new URL('../workers/humanTracking.worker.ts', import.meta.url), { type: 'module' });
+    humanWorkerRef.current = worker;
+    worker.onmessage = (event: MessageEvent<HumanWorkerResponse>) => {
       if (!active) return;
-      if (!window.Pose) {
-        if (retryCount++ < 30) {
-          window.setTimeout(initialize, 200);
-        } else {
-          setTrackingError('MediaPipe Pose could not be loaded. Check your internet connection and reload.');
-        }
-        return;
-      }
-
-      try {
-        const createPose = (playerId: 'p1' | 'p2') => {
-          const pose = new window.Pose({
-            locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
-          });
-          pose.setOptions({
-            modelComplexity: 0,
-            smoothLandmarks: true,
-            enableSegmentation: false,
-            minDetectionConfidence: 0.45,
-            minTrackingConfidence: 0.4,
-          });
-          pose.onResults((results: any) => updatePlayer(playerId, results));
-          return pose;
-        };
-
-        p1Pose = createPose('p1');
-        p2Pose = createPose('p2');
-        setTrackingError(null);
+      const message = event.data;
+      if (message.type === 'ready') {
         setIsModelReady(true);
         scheduleFrame();
-      } catch {
-        setTrackingError('Failed to initialize the boxing pose trackers.');
+      } else if (message.type === 'error') {
+        if (message.id !== undefined) processing = false;
+        setTrackingError(`Human.js body tracking failed: ${message.message}`);
+      } else {
+        processing = false;
+        updatePlayers(playerFromResult(message.frames[0], 0.5), playerFromResult(message.frames[1], 0));
+        drawPreview();
       }
     };
+    worker.onerror = (event) => {
+      processing = false;
+      if (active) setTrackingError(`Human.js body worker failed: ${event.message}`);
+    };
+    worker.postMessage({ type: 'initialize', mode: 'boxing' });
 
-    initialize();
     return () => {
       active = false;
+      if (humanWorkerRef.current === worker) humanWorkerRef.current = null;
+      worker.terminate();
       if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
       if (videoFrameCallbackId !== null) {
         const videoWithFrameCallback = videoElement as HTMLVideoElement & {
@@ -259,8 +243,6 @@ export function useBoxingTracking({ videoElement, isEnabled }: UseBoxingTracking
         };
         videoWithFrameCallback.cancelVideoFrameCallback?.(videoFrameCallbackId);
       }
-      p1Pose?.close();
-      p2Pose?.close();
     };
   }, [isEnabled, videoElement]);
 

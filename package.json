@@ -9,6 +9,8 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "^1.2.2",
+    "@vladmandic/human": "^3.3.6",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.358.0",
     "react": "^18.2.0",

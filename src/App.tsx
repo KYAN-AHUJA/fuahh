@@ -40,7 +40,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   soundEnabled: true,
   sfxVolume: 0.5,
   showHandPreview: true,
-  smoothingFactor: 0.15,
+  smoothingFactor: 0.05,
   p1ColorTarget: { r: 22, g: 139, b: 255, hex: '#168BFF' },
   p2ColorTarget: { r: 230, g: 83, b: 97, hex: '#E65361' },
   colorTolerance: 120,
