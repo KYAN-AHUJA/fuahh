@@ -257,6 +257,147 @@ class AudioManager {
       // ignore
     }
   }
+
+  public playPunchWhoosh() {
+    if (!this.soundEnabled || this.volume === 0) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.09);
+
+      gain.gain.setValueAtTime(0.12 * this.volume, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } catch {
+      // ignore
+    }
+  }
+
+  public playPunchHit(isHeavy: boolean = false) {
+    if (!this.soundEnabled || this.volume === 0) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      // Snappy impact
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = isHeavy ? 'square' : 'triangle';
+      osc.frequency.setValueAtTime(isHeavy ? 180 : 260, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + (isHeavy ? 0.18 : 0.12));
+
+      const vol = (isHeavy ? 0.32 : 0.22) * this.volume;
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + (isHeavy ? 0.19 : 0.13));
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + (isHeavy ? 0.2 : 0.14));
+    } catch {
+      // ignore
+    }
+  }
+
+  public playBlockThud() {
+    if (!this.soundEnabled || this.volume === 0) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.08);
+
+      gain.gain.setValueAtTime(0.18 * this.volume, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.09);
+    } catch {
+      // ignore
+    }
+  }
+
+  public playBoxingBell() {
+    if (!this.soundEnabled || this.volume === 0) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      // Classic double bell ding
+      [0, 0.18].forEach(offset => {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1760, now + offset); // A6 bell
+
+        gain.gain.setValueAtTime(0.2 * this.volume, now + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.6);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.65);
+      });
+    } catch {
+      // ignore
+    }
+  }
+
+  public playKO() {
+    if (!this.soundEnabled || this.volume === 0) return;
+    this.initCtx();
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      // Heavy sub-bass drop and dramatic triad
+      const sub = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(140, now);
+      sub.frequency.exponentialRampToValueAtTime(32, now + 0.8);
+
+      subGain.gain.setValueAtTime(0.35 * this.volume, now);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+
+      sub.connect(subGain);
+      subGain.connect(this.ctx.destination);
+
+      sub.start(now);
+      sub.stop(now + 0.9);
+    } catch {
+      // ignore
+    }
+  }
 }
 
 export const audioManager = new AudioManager();

@@ -1,4 +1,4 @@
-export type GameType = 'air-hockey' | 'table-tennis';
+export type GameType = 'air-hockey' | 'table-tennis' | 'boxing';
 
 export type ControlMode = 'camera' | 'keyboard-mouse' | 'vs-ai';
 
@@ -18,6 +18,19 @@ export type MatchState =
   | 'goal-scored'
   | 'paused'
   | 'match-complete';
+
+export interface HeadData {
+  isDetected: boolean;
+  x: number; // 0..1
+  y: number; // 0..1
+  vx: number;
+  vy: number;
+  isDucking: boolean;
+  swayX: number; // -1 (lean left) .. +1 (lean right)
+  confidence: number;
+}
+
+export type BoxingPunchType = 'jab' | 'cross' | 'uppercut' | 'hook' | 'none';
 
 export interface HandData {
   isDetected: boolean;

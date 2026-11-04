@@ -10,6 +10,23 @@ import {
 import { audioManager } from '../../audio/AudioManager';
 import { PlayerId } from '../../types';
 
+interface GoalShockwave {
+  r: number;
+  maxR: number;
+  speed: number;
+  alpha: number;
+  width: number;
+}
+
+interface GoalAnimation {
+  scorer: PlayerId;
+  elapsed: number;
+  duration: number;
+  originX: number;
+  originY: number;
+  shockwaves: GoalShockwave[];
+}
+
 export class AirHockeyEngine {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
@@ -21,6 +38,7 @@ export class AirHockeyEngine {
   public p1Paddle: Paddle;
   public p2Paddle: Paddle;
   public sparks: SparkParticle[] = [];
+  public goalAnim: GoalAnimation | null = null;
 
   private lastTime: number = 0;
   private animationId: number | null = null;
@@ -276,15 +294,43 @@ export class AirHockeyEngine {
         this.sparks.splice(i, 1);
       }
     }
+
+    // 4. Update Goal Animation Shockwaves
+    if (this.goalAnim) {
+      this.goalAnim.elapsed += dt;
+      this.goalAnim.shockwaves.forEach(w => {
+        w.r += w.speed * dt;
+        w.alpha = Math.max(0, 1 - w.r / w.maxR);
+      });
+      if (this.goalAnim.elapsed >= this.goalAnim.duration) {
+        this.goalAnim = null;
+      }
+    }
   }
 
   private handleGoal(scorer: PlayerId) {
     if (this.puck.isGoalAnim) return;
     this.puck.isGoalAnim = true;
+    const originX = scorer === 'p1' ? this.width - 14 : 14;
+    const originY = this.height / 2;
+
+    this.goalAnim = {
+      scorer,
+      elapsed: 0,
+      duration: 1.35,
+      originX,
+      originY,
+      shockwaves: [
+        { r: 15, maxR: this.width * 0.95, speed: 480, alpha: 0.95, width: 3 },
+        { r: 5, maxR: this.width * 0.75, speed: 360, alpha: 0.8, width: 2 },
+        { r: 0, maxR: this.width * 0.55, speed: 250, alpha: 0.65, width: 1.5 },
+      ],
+    };
+
     this.createGoalExplosion(scorer);
     audioManager.playGoal();
     this.onScore?.(scorer);
-    this.resetTimer = 1.1;
+    this.resetTimer = 1.35;
   }
 
   private createSparks(x: number, y: number, color: string, count: number) {
@@ -309,18 +355,18 @@ export class AirHockeyEngine {
     const x = scorer === 'p1' ? this.width - 20 : 20;
     const y = this.height / 2;
 
-    for (let i = 0; i < 30; i++) {
-      const angle = (scorer === 'p1' ? Math.PI : 0) + (Math.random() - 0.5) * 1.6;
-      const speed = 180 + Math.random() * 380;
+    for (let i = 0; i < 40; i++) {
+      const angle = (scorer === 'p1' ? Math.PI : 0) + (Math.random() - 0.5) * 1.8;
+      const speed = 180 + Math.random() * 420;
       this.sparks.push({
         x,
         y: y + (Math.random() - 0.5) * AIR_HOCKEY_CONFIG.goalWidth,
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed,
-        life: 0.5 + Math.random() * 0.4,
-        maxLife: 0.9,
+        life: 0.5 + Math.random() * 0.5,
+        maxLife: 1.0,
         color,
-        size: 2 + Math.random() * 2,
+        size: 2 + Math.random() * 2.5,
       });
     }
   }
@@ -483,5 +529,111 @@ export class AirHockeyEngine {
       ctx.fill();
       ctx.globalAlpha = 1.0;
     });
+
+    // 7. Goal Shockwaves & Visual Celebration
+    if (this.goalAnim) {
+      const g = this.goalAnim;
+      const scorerColor = g.scorer === 'p1' ? '#168BFF' : '#E65361';
+
+      // Shockwave rings
+      g.shockwaves.forEach(w => {
+        if (w.alpha > 0.01) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(g.originX, g.originY, w.r, 0, Math.PI * 2);
+          ctx.strokeStyle = scorerColor;
+          ctx.globalAlpha = w.alpha * 0.75;
+          ctx.lineWidth = w.width;
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+
+      // Goal Slot Flash Strobe
+      const flashAlpha = Math.max(0, 1 - g.elapsed / 0.5);
+      if (flashAlpha > 0) {
+        ctx.save();
+        ctx.fillStyle = scorerColor;
+        ctx.globalAlpha = flashAlpha * 0.45;
+        const slotX = g.scorer === 'p1' ? tx + tw - 8 : tx;
+        ctx.fillRect(slotX, this.goalTop - 10, 8, AIR_HOCKEY_CONFIG.goalWidth + 20);
+        ctx.restore();
+      }
+
+      // 8. 2D Minimalist Centered Goal Celebration Banner
+      const progress = g.elapsed / g.duration;
+      const enterProgress = Math.min(1, g.elapsed / 0.22);
+      const exitProgress = Math.max(0, (g.elapsed - 1.0) / 0.35);
+      const alpha = Math.min(1, enterProgress * (1 - exitProgress));
+      const scale = 0.88 + 0.12 * Math.sin((enterProgress * Math.PI) / 2);
+
+      if (alpha > 0.02) {
+        ctx.save();
+        ctx.translate(w / 2, h / 2);
+        ctx.scale(scale, scale);
+        ctx.globalAlpha = alpha;
+
+        const bannerW = 340;
+        const bannerH = 76;
+
+        // Dark background panel
+        ctx.beginPath();
+        ctx.rect(-bannerW / 2, -bannerH / 2, bannerW, bannerH);
+        ctx.fillStyle = '#0B0E0D';
+        ctx.fill();
+
+        // Scorer accent border
+        ctx.strokeStyle = scorerColor;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Corner crosshair ticks
+        const tickLen = 6;
+        ctx.strokeStyle = '#EAE7DE';
+        ctx.lineWidth = 1.5;
+        [
+          [-bannerW / 2, -bannerH / 2],
+          [bannerW / 2, -bannerH / 2],
+          [-bannerW / 2, bannerH / 2],
+          [bannerW / 2, bannerH / 2],
+        ].forEach(([cx, cy]) => {
+          ctx.beginPath();
+          ctx.moveTo(cx - tickLen, cy);
+          ctx.lineTo(cx + tickLen, cy);
+          ctx.moveTo(cx, cy - tickLen);
+          ctx.lineTo(cx, cy + tickLen);
+          ctx.stroke();
+        });
+
+        // Top Sub-label: GOAL!
+        ctx.font = '700 13px "JetBrains Mono", monospace';
+        ctx.fillStyle = scorerColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText('GOAL!', 0, -bannerH / 2 + 14);
+
+        // Main Title: PLAYER 1 SCORED (+1)
+        ctx.font = '800 17px "Inter", sans-serif';
+        ctx.fillStyle = '#EAE7DE';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        const scorerLabel = g.scorer === 'p1' ? 'PLAYER 1 SCORED  +1' : 'PLAYER 2 SCORED  +1';
+        ctx.fillText(scorerLabel, 0, bannerH / 2 - 14);
+
+        // Thin horizontal laser scanline extending from banner edges
+        const laserLen = Math.min(w * 0.45, 120 + progress * 240);
+        ctx.strokeStyle = scorerColor;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = alpha * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(-bannerW / 2, 0);
+        ctx.lineTo(-bannerW / 2 - laserLen, 0);
+        ctx.moveTo(bannerW / 2, 0);
+        ctx.lineTo(bannerW / 2 + laserLen, 0);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+    }
   }
 }

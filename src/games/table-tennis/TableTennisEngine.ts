@@ -16,6 +16,35 @@ interface FloatingText {
   alpha: number;
   life: number;
   scale: number;
+  subtext?: string;
+}
+
+interface PointShockwave {
+  r: number;
+  maxR: number;
+  speed: number;
+  alpha: number;
+  width: number;
+}
+
+interface PointAnimation {
+  scorer: PlayerId;
+  elapsed: number;
+  duration: number;
+  originX: number;
+  originY: number;
+  shockwaves: PointShockwave[];
+}
+
+interface Spark {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  color: string;
+  size: number;
 }
 
 export class TableTennisEngine {
@@ -33,6 +62,8 @@ export class TableTennisEngine {
   public maxRallyInMatch: number = 0;
 
   private floatingTexts: FloatingText[] = [];
+  public pointAnim: PointAnimation | null = null;
+  public sparks: Spark[] = [];
   private lastTime: number = 0;
   private animationId: number | null = null;
   private isRunning: boolean = false;
@@ -228,12 +259,35 @@ export class TableTennisEngine {
       this.handleScore('p1');
     }
 
+    // Point Animation Update
+    if (this.pointAnim) {
+      this.pointAnim.elapsed += dt;
+      this.pointAnim.shockwaves.forEach(w => {
+        w.r += w.speed * dt;
+        w.alpha = Math.max(0, 1 - w.r / w.maxR);
+      });
+      if (this.pointAnim.elapsed >= this.pointAnim.duration) {
+        this.pointAnim = null;
+      }
+    }
+
+    // Sparks update
+    for (let i = this.sparks.length - 1; i >= 0; i--) {
+      const sp = this.sparks[i];
+      sp.x += sp.vx * dt;
+      sp.y += sp.vy * dt;
+      sp.life -= dt;
+      if (sp.life <= 0) {
+        this.sparks.splice(i, 1);
+      }
+    }
+
     // Floating text update
     for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
       const ft = this.floatingTexts[i];
-      ft.y -= 25 * dt;
+      ft.y -= 30 * dt;
       ft.life -= dt;
-      ft.alpha = Math.max(0, ft.life / 0.7);
+      ft.alpha = Math.max(0, ft.life / 0.8);
       if (ft.life <= 0) {
         this.floatingTexts.splice(i, 1);
       }
@@ -271,10 +325,27 @@ export class TableTennisEngine {
     audioManager.playPaddleHit(ball.speed / 400);
     this.onHit?.(player, this.rallyCount);
 
+    // Create sparks on paddle hit
+    const hitColor = isP1 ? '#168BFF' : '#E65361';
+    for (let i = 0; i < 8; i++) {
+      const angle = (isP1 ? 0 : Math.PI) + (Math.random() - 0.5) * 1.5;
+      const spd = 60 + Math.random() * 120;
+      this.sparks.push({
+        x: ball.x,
+        y: ball.y,
+        vx: Math.cos(angle) * spd,
+        vy: Math.sin(angle) * spd,
+        life: 0.2 + Math.random() * 0.2,
+        maxLife: 0.4,
+        color: hitColor,
+        size: 1.5 + Math.random() * 1.5,
+      });
+    }
+
     if (this.rallyCount === 5) {
-      this.addFloatingText('5x RALLY', this.width / 2, this.height / 2 - 30, '#168BFF', 1.2);
+      this.addFloatingText('5x RALLY', this.width / 2, this.height / 2 - 35, '#168BFF', 1.25, 'KEEP IT GOING');
     } else if (this.rallyCount === 10) {
-      this.addFloatingText('10x RALLY', this.width / 2, this.height / 2 - 30, '#D9CCB2', 1.3);
+      this.addFloatingText('10x ULTRA RALLY!', this.width / 2, this.height / 2 - 35, '#D9CCB2', 1.35, 'FIRE ACCELERATION');
     }
   }
 
@@ -282,22 +353,56 @@ export class TableTennisEngine {
     audioManager.playScore();
     this.onScore?.(scorer);
 
-    const text = scorer === 'p1' ? 'P1 POINT' : 'P2 POINT';
-    const color = scorer === 'p1' ? '#168BFF' : '#E65361';
-    this.addFloatingText(text, this.width / 2, this.height / 2, color, 1.4);
+    const isP1 = scorer === 'p1';
+    const originX = isP1 ? this.width - 24 : 24;
+    const originY = Math.max(50, Math.min(this.height - 50, this.ball.y));
+    const color = isP1 ? '#168BFF' : '#E65361';
 
-    this.resetDelay = 0.9;
+    // Set point animation state
+    this.pointAnim = {
+      scorer,
+      elapsed: 0,
+      duration: 1.2,
+      originX,
+      originY,
+      shockwaves: [
+        { r: 10, maxR: this.width * 0.8, speed: 420, alpha: 0.9, width: 2.5 },
+        { r: 2, maxR: this.width * 0.55, speed: 280, alpha: 0.75, width: 2 },
+      ],
+    };
+
+    // Point explosion sparks
+    for (let i = 0; i < 28; i++) {
+      const angle = (isP1 ? Math.PI : 0) + (Math.random() - 0.5) * 1.8;
+      const spd = 120 + Math.random() * 320;
+      this.sparks.push({
+        x: originX,
+        y: originY,
+        vx: Math.cos(angle) * spd,
+        vy: Math.sin(angle) * spd,
+        life: 0.4 + Math.random() * 0.4,
+        maxLife: 0.8,
+        color,
+        size: 1.8 + Math.random() * 2,
+      });
+    }
+
+    const badgeText = isP1 ? '+1 POINT · PLAYER 1' : '+1 POINT · PLAYER 2';
+    this.addFloatingText(badgeText, this.width / 2, this.height / 2, color, 1.4, isP1 ? 'BLUE TAKES THE RALLY' : 'RED TAKES THE RALLY');
+
+    this.resetDelay = 1.1;
   }
 
-  private addFloatingText(text: string, x: number, y: number, color: string, scale: number = 1) {
+  private addFloatingText(text: string, x: number, y: number, color: string, scale: number = 1, subtext?: string) {
     this.floatingTexts.push({
       text,
       x,
       y,
       color,
       alpha: 1,
-      life: 0.7,
+      life: 0.9,
       scale,
+      subtext,
     });
   }
 
@@ -325,6 +430,37 @@ export class TableTennisEngine {
     ctx.strokeStyle = '#303833';
     ctx.lineWidth = 2;
     ctx.strokeRect(tx, ty, tw, th);
+
+    // Point Court Wash on Scorer's Half
+    if (this.pointAnim) {
+      const p = this.pointAnim;
+      const scorerColor = p.scorer === 'p1' ? '#168BFF' : '#E65361';
+      const decay = Math.max(0, 1 - p.elapsed / p.duration);
+
+      ctx.save();
+      ctx.fillStyle = scorerColor;
+      ctx.globalAlpha = decay * 0.12;
+      if (p.scorer === 'p1') {
+        ctx.fillRect(tx, ty, tw / 2, th);
+      } else {
+        ctx.fillRect(tx + tw / 2, ty, tw / 2, th);
+      }
+      ctx.restore();
+
+      // Point shockwave ripples
+      p.shockwaves.forEach(w => {
+        if (w.alpha > 0.01) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(p.originX, p.originY, w.r, 0, Math.PI * 2);
+          ctx.strokeStyle = scorerColor;
+          ctx.lineWidth = w.width;
+          ctx.globalAlpha = w.alpha * 0.8;
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+    }
 
     // Center divider (Net): thin crisp dashed line
     ctx.strokeStyle = '#303833';
@@ -384,15 +520,52 @@ export class TableTennisEngine {
     ctx.fillStyle = '#EAE7DE';
     ctx.fillRect(p2.x - 1, p2.y - p2.height / 4, 2, p2.height / 2);
 
-    // 5. Floating text
+    // 5. Sparks
+    this.sparks.forEach(sp => {
+      const alpha = Math.max(0, sp.life / sp.maxLife);
+      ctx.fillStyle = sp.color;
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(sp.x, sp.y, sp.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    });
+
+    // 6. Styled Floating Text Badges
     this.floatingTexts.forEach(ft => {
       ctx.save();
       ctx.globalAlpha = ft.alpha;
-      ctx.font = `600 ${Math.round(16 * ft.scale)}px Inter, sans-serif`;
+      const fontSize = Math.round(15 * ft.scale);
+      ctx.font = `700 ${fontSize}px "Inter", sans-serif`;
+
+      const textMetrics = ctx.measureText(ft.text);
+      const boxW = Math.max(140, textMetrics.width + 28);
+      const boxH = ft.subtext ? 42 : 30;
+
+      // Dark badge pill background
+      ctx.fillStyle = '#0B0E0D';
+      ctx.beginPath();
+      ctx.rect(ft.x - boxW / 2, ft.y - boxH / 2, boxW, boxH);
+      ctx.fill();
+
+      // Border in accent color
+      ctx.strokeStyle = ft.color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Text label
       ctx.fillStyle = ft.color;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(ft.text, ft.x, ft.y);
+      ctx.fillText(ft.text, ft.x, ft.subtext ? ft.y - 6 : ft.y);
+
+      // Subtext if present
+      if (ft.subtext) {
+        ctx.font = '600 9px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#A6AAA2';
+        ctx.fillText(ft.subtext, ft.x, ft.y + 11);
+      }
+
       ctx.restore();
     });
   }
