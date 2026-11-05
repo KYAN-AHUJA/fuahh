@@ -41,3 +41,144 @@
 .animate-radar {
   animation: radar-pulse 2s infinite ease-in-out;
 }
+
+.landing-arena {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.28;
+  overflow: hidden;
+  border: 1px solid #444e47;
+  border-radius: 24px;
+  background-color: #121715;
+  box-shadow: inset 0 0 0 8px #0e1210, inset 0 0 0 9px #303833;
+}
+
+.landing-arena::before,
+.landing-arena::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 5%;
+  content: '';
+  border-top: 1px solid #303833;
+  border-bottom: 1px solid #303833;
+  background: #0b0e0d;
+}
+
+.landing-arena::before {
+  left: -1px;
+  border-right: 1px solid #303833;
+  border-radius: 0 50% 50% 0;
+}
+
+.landing-arena::after {
+  right: -1px;
+  border-left: 1px solid #303833;
+  border-radius: 50% 0 0 50%;
+}
+
+.landing-arena__center-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  border-left: 1px dashed #444e47;
+}
+
+.landing-arena__center-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24%;
+  aspect-ratio: 1;
+  border: 1px solid #303833;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.landing-arena__goal {
+  position: absolute;
+  top: 35%;
+  height: 30%;
+  width: 2px;
+}
+
+.landing-arena__goal--left {
+  left: 0;
+  background: #168bff;
+}
+
+.landing-arena__goal--right {
+  right: 0;
+  background: #e65361;
+}
+
+.landing-arena__mallet,
+.landing-arena__puck {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.landing-arena__mallet {
+  width: 12%;
+}
+
+.landing-arena__mallet i {
+  width: 42%;
+  aspect-ratio: 1;
+  border: 2px solid #121715;
+  border-radius: 50%;
+}
+
+.landing-arena__mallet--blue {
+  left: 22%;
+  background: #168bff;
+  animation: landing-mallet-left 3.2s ease-in-out infinite alternate;
+}
+
+.landing-arena__mallet--coral {
+  left: 78%;
+  background: #e65361;
+  animation: landing-mallet-right 3.8s ease-in-out infinite alternate;
+}
+
+.landing-arena__puck {
+  left: 50%;
+  width: 4%;
+  background: #eae7de;
+  box-shadow: 0 0 0 2px #a6aaa2;
+  animation: landing-puck-rally 3.2s ease-in-out infinite alternate;
+}
+
+@keyframes landing-puck-rally {
+  0% { left: 50%; top: 50%; }
+  28% { left: 64%; top: 68%; }
+  56% { left: 34%; top: 74%; }
+  78% { left: 61%; top: 34%; }
+  100% { left: 50%; top: 50%; }
+}
+
+@keyframes landing-mallet-left {
+  to { top: 64%; }
+}
+
+@keyframes landing-mallet-right {
+  to { top: 38%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

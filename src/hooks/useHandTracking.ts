@@ -17,6 +17,9 @@ const DEFAULT_HAND: HandData = {
   colorScore: 0,
 };
 
+const MAX_HAND_TRACKING_FPS = 30;
+const MAX_HAND_TRACKING_WIDTH = 640;
+
 interface UseHandTrackingProps {
   videoElement: HTMLVideoElement | null;
   isEnabled: boolean;
@@ -55,6 +58,7 @@ export function useHandTracking({
   const lastReadinessRef = useRef('00');
   const handsDetectedCountRef = useRef(0);
   const lastPreviewTimeRef = useRef(0);
+  const lastInferenceTimeRef = useRef(0);
 
   // Stable tracking references
   const prevP1Ref = useRef<HandData>({ ...DEFAULT_HAND, x: 0.22 });
@@ -370,11 +374,18 @@ export function useHandTracking({
     if (
       videoElement.readyState >= 2 &&
       !videoElement.paused &&
+      performance.now() - lastInferenceTimeRef.current >= 1000 / MAX_HAND_TRACKING_FPS &&
       !isProcessingRef.current
     ) {
       isProcessingRef.current = true;
+      lastInferenceTimeRef.current = performance.now();
       try {
-        const bitmap = await createImageBitmap(videoElement);
+        const scale = Math.min(1, MAX_HAND_TRACKING_WIDTH / videoElement.videoWidth);
+        const bitmap = await createImageBitmap(videoElement, {
+          resizeWidth: Math.round(videoElement.videoWidth * scale),
+          resizeHeight: Math.round(videoElement.videoHeight * scale),
+          resizeQuality: 'medium',
+        });
         const worker = humanWorkerRef.current;
         if (!worker) {
           bitmap.close();

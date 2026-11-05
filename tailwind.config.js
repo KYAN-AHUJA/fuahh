@@ -31,6 +31,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Barlow Condensed', 'Inter', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       }
     },

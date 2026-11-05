@@ -403,9 +403,10 @@ export const App: React.FC = () => {
           />
 
           {/* Active Canvas Game View: Table occupies most of the gameplay viewport */}
-          <div className="relative flex-1 w-full h-full pt-14 pb-12 flex items-center justify-center">
-            {activeGame === 'air-hockey' ? (
-              <AirHockey
+          <div className="relative flex-1 min-h-0 min-w-0 w-full pt-14 pb-12 flex flex-col lg:flex-row items-stretch">
+            <div className="relative flex-1 min-h-0 min-w-0">
+              {activeGame === 'air-hockey' ? (
+                <AirHockey
                 p1Hand={p1Hand}
                 p2Hand={p2Hand}
                 handTrackingRef={handTrackingRef}
@@ -415,9 +416,9 @@ export const App: React.FC = () => {
                 isPaused={matchState !== 'playing'}
                 onScore={handleScore}
                 onHit={handleHit}
-              />
-            ) : activeGame === 'table-tennis' ? (
-              <TableTennis
+                />
+              ) : activeGame === 'table-tennis' ? (
+                <TableTennis
                 p1Hand={p1Hand}
                 p2Hand={p2Hand}
                 handTrackingRef={handTrackingRef}
@@ -427,9 +428,9 @@ export const App: React.FC = () => {
                 isPaused={matchState !== 'playing'}
                 onScore={handleScore}
                 onHit={handleHit}
-              />
-            ) : (
-              <Boxing
+                />
+              ) : (
+                <Boxing
                 tracking={boxingTracking}
                 trackingRef={boxingTrackingRef}
                 controlMode={controlMode}
@@ -442,7 +443,23 @@ export const App: React.FC = () => {
                 onMatchEnd={handleBoxingMatchEnd}
                 onHit={handleHit}
                 previewCanvasRef={boxingPreviewCanvasRef}
-              />
+                />
+              )}
+            </div>
+
+            {activeGame !== 'boxing' && controlMode === 'camera' && showHandPreview && (
+              <aside className="max-h-40 w-full shrink-0 overflow-y-auto p-2 lg:h-full lg:max-h-none lg:w-64">
+                <HandTrackingPreview
+                  canvasRef={previewCanvasRef}
+                  p1Hand={p1Hand}
+                  p2Hand={p2Hand}
+                  isModelReady={isModelReady}
+                  cameraStatus={cameraStatus}
+                  trackingFps={trackingFps}
+                  handsDetectedCount={handsDetectedCount}
+                  onClose={() => setShowHandPreview(false)}
+                />
+              </aside>
             )}
           </div>
 
@@ -453,20 +470,6 @@ export const App: React.FC = () => {
                 {countdown === 0 ? 'GO!' : countdown}
               </span>
             </div>
-          )}
-
-          {/* Floating PIP Hand Tracking Preview (Top-Right) */}
-          {activeGame !== 'boxing' && controlMode === 'camera' && showHandPreview && (
-            <HandTrackingPreview
-              canvasRef={previewCanvasRef}
-              p1Hand={p1Hand}
-              p2Hand={p2Hand}
-              isModelReady={isModelReady}
-              cameraStatus={cameraStatus}
-              trackingFps={trackingFps}
-              handsDetectedCount={handsDetectedCount}
-              onClose={() => setShowHandPreview(false)}
-            />
           )}
 
           {/* Pause Menu Modal */}

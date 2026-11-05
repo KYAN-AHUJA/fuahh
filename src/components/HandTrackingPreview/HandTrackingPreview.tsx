@@ -31,7 +31,7 @@ export const HandTrackingPreview: React.FC<HandTrackingPreviewProps> = ({
     : (p1Hand.isDetected ? 1 : 0) + (p2Hand.isDetected ? 1 : 0);
 
   return (
-    <div className="fixed top-16 right-4 z-30 w-64 bg-[#121715]/95 border border-[#303833] rounded-lg shadow-xl backdrop-blur-md overflow-hidden select-none transition-all">
+    <div className="relative w-full bg-[#121715]/95 border border-[#303833] rounded-lg shadow-xl backdrop-blur-md overflow-hidden select-none transition-all lg:h-full">
       {/* Header bar */}
       <div className="flex items-center justify-between px-3 py-2 bg-[#171D1A] border-b border-[#303833]">
         <div className="flex items-center gap-2">
